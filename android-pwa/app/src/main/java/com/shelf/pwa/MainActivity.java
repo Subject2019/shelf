@@ -1,10 +1,13 @@
-package com.echoshelf.pwa;
+package com.shelf.pwa;
 
+import android.Manifest;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
 import android.graphics.Color;
+import android.os.Build;
 import android.os.Bundle;
 import android.view.View;
 import android.view.WindowInsets;
@@ -14,7 +17,10 @@ import android.webkit.WebResourceRequest;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
-import android.widget.Toast;
+
+import com.shelf.pwa.player.NativePlayer;
+
+import org.json.JSONObject;
 
 /**
  * 全屏 WebView 壳：直接加载 shelf WebUI（其本身已具备移动端响应式布局），
@@ -32,6 +38,7 @@ public class MainActivity extends Activity {
     private static final String KEY_URL = "server_url";
 
     private WebView webView;
+    private NativePlayer nativePlayer;
     private String serverUrl;
     /** 真实状态栏/导航栏高度（CSS px=dp），由 WindowInsets 驱动，兜底取系统资源。 */
     private int lastTopDp = 0;
@@ -88,6 +95,16 @@ public class MainActivity extends Activity {
 
         webView.addJavascriptInterface(new AppBridge(), "ShelfApp");
 
+        // 原生播放：WebView 只做 UI，音频交给 Media3 前台服务，状态栏/锁屏由系统托管。
+        nativePlayer = new NativePlayer(this, state -> runOnUiThread(() -> {
+            if (webView != null) {
+                webView.evaluateJavascript(
+                        "window.__shelfPlayer && window.__shelfPlayer.onState("
+                                + JSONObject.quote(state) + ")", null);
+            }
+        }));
+        webView.addJavascriptInterface(new PlayerBridge(), "ShelfPlayer");
+
         webView.setWebViewClient(new WebViewClient() {
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, String u) {
@@ -125,6 +142,7 @@ public class MainActivity extends Activity {
         });
 
         setContentView(webView);
+        requestNotificationPermission();
         webView.loadUrl(url);
     }
 
@@ -222,6 +240,88 @@ public class MainActivity extends Activity {
         return density > 0 ? Math.round(getResources().getDimensionPixelSize(id) / density) : 0;
     }
 
+    /** Android 13+ 通知权限；没有它前台播放服务的媒体通知不会显示。 */
+    private void requestNotificationPermission() {
+        if (Build.VERSION.SDK_INT >= 33
+                && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)
+                != PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS}, 1001);
+        }
+    }
+
+    /** 网页 → 原生播放控制的桥；所有调用切回主线程执行。 */
+    private class PlayerBridge {
+        @JavascriptInterface
+        public void play(String json) {
+            runOnUiThread(() -> {
+                if (nativePlayer != null) nativePlayer.play(json);
+            });
+        }
+
+        @JavascriptInterface
+        public void pause() {
+            runOnUiThread(() -> {
+                if (nativePlayer != null) nativePlayer.pause();
+            });
+        }
+
+        @JavascriptInterface
+        public void resume() {
+            runOnUiThread(() -> {
+                if (nativePlayer != null) nativePlayer.resume();
+            });
+        }
+
+        @JavascriptInterface
+        public void seekTo(double absoluteSec) {
+            runOnUiThread(() -> {
+                if (nativePlayer != null) nativePlayer.seekTo(absoluteSec);
+            });
+        }
+
+        @JavascriptInterface
+        public void seekToTrack(int index, double positionInTrackSec) {
+            runOnUiThread(() -> {
+                if (nativePlayer != null) nativePlayer.seekToTrack(index, positionInTrackSec);
+            });
+        }
+
+        @JavascriptInterface
+        public void setRate(float rate) {
+            runOnUiThread(() -> {
+                if (nativePlayer != null) nativePlayer.setRate(rate);
+            });
+        }
+
+        @JavascriptInterface
+        public void setVolume(float volume) {
+            runOnUiThread(() -> {
+                if (nativePlayer != null) nativePlayer.setVolume(volume);
+            });
+        }
+
+        @JavascriptInterface
+        public void next() {
+            runOnUiThread(() -> {
+                if (nativePlayer != null) nativePlayer.next();
+            });
+        }
+
+        @JavascriptInterface
+        public void previous() {
+            runOnUiThread(() -> {
+                if (nativePlayer != null) nativePlayer.previous();
+            });
+        }
+
+        @JavascriptInterface
+        public void stop() {
+            runOnUiThread(() -> {
+                if (nativePlayer != null) nativePlayer.stop();
+            });
+        }
+    }
+
     private class AppBridge {
         /** 启动屏已退场：此后系统栏配色跟随应用主题。 */
         @JavascriptInterface
@@ -268,6 +368,10 @@ public class MainActivity extends Activity {
 
     @Override
     protected void onDestroy() {
+        if (nativePlayer != null) {
+            nativePlayer.release();
+            nativePlayer = null;
+        }
         if (webView != null) {
             webView.destroy();
             webView = null;

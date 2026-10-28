@@ -4,6 +4,9 @@
 - 日期：2026-10-23
 - 决策者：项目初始化（CodeBuddy）
 
+> 2026-10-28 补充：M5 最终采用 `android-pwa`（WebView 壳 + 原生 Media3），不再继续原生 Compose 客户端；
+> 本 ADR 保留当时的选型背景。当前客户端说明见 [`android-pwa/README.md`](../../android-pwa/README.md)。
+
 ## 背景
 
 要在 NAS 上自托管有声书服务，需求是：Docker 单点部署、完整网页播放端、安卓 App、广泛音频格式支持、多端进度同步。使用者是个人/家庭，通常不熟悉运维，机器资源有限（2–8 GB 内存，ARM 或低功耗 x86）。

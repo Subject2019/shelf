@@ -8,6 +8,22 @@ import { create } from "zustand";
 import { getAccessToken } from "../api/client";
 import { api, deviceId } from "../api/endpoints";
 import type { BookDetail, Chapter, Track } from "../api/types";
+import {
+  getNativePlayer,
+  type NativePlayPayload,
+  type NativeState,
+} from "../lib/nativePlayer";
+
+/** ArrayBuffer → base64，用于把封面内嵌进原生 MediaMetadata。 */
+function arrayBufferToBase64(buffer: ArrayBuffer): string {
+  const bytes = new Uint8Array(buffer);
+  let binary = "";
+  const chunk = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunk) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
+  }
+  return btoa(binary);
+}
 
 const RATE_KEY = "echoshelf.playback_rate";
 const SKIP_INTRO_KEY = "echoshelf.skip_intro";
@@ -37,6 +53,8 @@ export interface TrackWithOffset extends Track {
 let audioEl: HTMLAudioElement | null = null;
 let reportTimer: number | null = null;
 let seekReportTimer: number | null = null;
+/** Android 壳注入的原生播放桥；普通浏览器为 null。 */
+const nativePlayer = getNativePlayer();
 
 function withOffsets(tracks: Track[]): TrackWithOffset[] {
   let offset = 0;
@@ -286,6 +304,12 @@ interface PlayerState {
 
 export const usePlayer = create<PlayerState>((set, get) => {
   function switchTo(track: TrackWithOffset, positionInTrack = 0) {
+    if (nativePlayer) {
+      const index = get().tracks.findIndex((item) => item.id === track.id);
+      if (index >= 0) nativePlayer.seekToTrack(index, positionInTrack);
+      set({ trackId: track.id, positionSec: track.offsetSec + positionInTrack });
+      return;
+    }
     if (!audioEl) return;
     const token = get().token;
     audioEl.src = urlFor(track, token);
@@ -342,13 +366,16 @@ export const usePlayer = create<PlayerState>((set, get) => {
 
     async open(bookId, options) {
       const current = get();
-      if (current.book?.id === bookId && audioEl) {
-        if (audioEl.paused) {
+      if (current.book?.id === bookId && (audioEl || nativePlayer)) {
+        if (!current.isPlaying) {
           // 先对齐账号的最新进度再播放：另一台设备可能已经听远了
           await get().syncFromServer();
-          void audioEl.play().catch(() => undefined);
+          if (nativePlayer) nativePlayer.resume();
+          else void audioEl?.play().catch(() => undefined);
+        } else if (nativePlayer) {
+          nativePlayer.pause();
         } else {
-          audioEl.pause();
+          audioEl?.pause();
         }
         return;
       }
@@ -406,6 +433,73 @@ export const usePlayer = create<PlayerState>((set, get) => {
 
         rememberLastBook(bookDetail, start);
 
+        if (nativePlayer) {
+          audioEl?.pause();
+          const intro =
+            get().introSec > 0 ? get().introSec : (detail.intro_sec ?? 0);
+          const outro =
+            get().outroSec > 0 ? get().outroSec : (detail.outro_sec ?? 0);
+          const nativeTracks = tracks.map((track) => {
+            const clipStartSec =
+              get().skipIntro && intro > 0 && intro < track.duration_sec
+                ? intro
+                : 0;
+            const clipEndSec =
+              get().skipOutro && outro > 0 && track.duration_sec > outro + 1
+                ? track.duration_sec - outro
+                : track.duration_sec;
+            return {
+              id: track.id,
+              url: new URL(
+                urlFor(track, playToken.token),
+                window.location.origin,
+              ).toString(),
+              title: track.title || bookDetail.title,
+              artist: detail.author ?? "",
+              durationSec: track.duration_sec,
+              offsetSec: track.offsetSec,
+              clipStartSec,
+              clipEndSec,
+            };
+          });
+          const coverUrl = detail.cover_url
+            ? new URL(detail.cover_url, window.location.origin).toString()
+            : null;
+          // 系统媒体通知对 http/带鉴权封面的加载并不可靠，直接把封面字节内嵌给原生。
+          let coverData: string | null = null;
+          if (coverUrl) {
+            const coverController = new AbortController();
+            const coverTimer = window.setTimeout(() => coverController.abort(), 3000);
+            try {
+              const response = await fetch(coverUrl, {
+                signal: coverController.signal,
+              });
+              if (response.ok) {
+                coverData = arrayBufferToBase64(await response.arrayBuffer());
+              }
+            } catch {
+              // 拿不到封面就退回 coverUrl，不影响播放
+            } finally {
+              window.clearTimeout(coverTimer);
+            }
+          }
+          const payload: NativePlayPayload = {
+            tracks: nativeTracks,
+            startIndex: Math.max(
+              0,
+              tracks.findIndex((track) => track.id === target.id),
+            ),
+            startPositionSec: start,
+            rate: get().rate,
+            coverUrl,
+            coverData,
+          };
+          nativePlayer.play(JSON.stringify(payload));
+          set({ isPlaying: true });
+          startReporting();
+          return;
+        }
+
         if (!audioEl) return;
         audioEl.playbackRate = get().rate;
         audioEl.src = urlFor(target, playToken.token);
@@ -434,6 +528,12 @@ export const usePlayer = create<PlayerState>((set, get) => {
     },
 
     toggle() {
+      if (nativePlayer) {
+        if (!get().book) return;
+        if (get().isPlaying) nativePlayer.pause();
+        else nativePlayer.resume();
+        return;
+      }
       if (!audioEl || !get().book) return;
       if (audioEl.paused) void audioEl.play().catch(() => undefined);
       else audioEl.pause();
@@ -442,8 +542,19 @@ export const usePlayer = create<PlayerState>((set, get) => {
     seekTo(absoluteSec) {
       const state = get();
       const target = trackAt(state.tracks, absoluteSec);
-      if (!target || !audioEl) return;
+      if (!target) return;
 
+      if (nativePlayer) {
+        const index = state.tracks.findIndex((track) => track.id === target.id);
+        if (index >= 0) {
+          nativePlayer.seekToTrack(index, absoluteSec - target.offsetSec);
+        }
+        set({ trackId: target.id, positionSec: absoluteSec });
+        scheduleSeekReport();
+        return;
+      }
+
+      if (!audioEl) return;
       if (target.id !== state.trackId) {
         switchTo(target, absoluteSec - target.offsetSec);
       } else {
@@ -507,6 +618,17 @@ export const usePlayer = create<PlayerState>((set, get) => {
 
     prevTrack() {
       const state = get();
+      if (nativePlayer) {
+        const track = findTrackById(state.tracks, state.trackId);
+        const inTrack = track ? state.positionSec - track.offsetSec : 0;
+        if (track && inTrack > 5) {
+          const index = state.tracks.findIndex((item) => item.id === track.id);
+          if (index >= 0) nativePlayer.seekToTrack(index, 0);
+        } else {
+          nativePlayer.previous();
+        }
+        return;
+      }
       // 播过 5 秒先回本轨开头，再往上一轨
       if (audioEl && audioEl.currentTime > 5) {
         audioEl.currentTime = 0;
@@ -549,6 +671,7 @@ export const usePlayer = create<PlayerState>((set, get) => {
 
     setRate(rate) {
       localStorage.setItem(RATE_KEY, String(rate));
+      if (nativePlayer) nativePlayer.setRate(rate);
       if (audioEl) audioEl.playbackRate = rate;
       set({ rate });
       get().reportProgress(false);
@@ -583,6 +706,7 @@ export const usePlayer = create<PlayerState>((set, get) => {
 
     setVolume(volume) {
       const clamped = Math.max(0, Math.min(1, volume));
+      if (nativePlayer) nativePlayer.setVolume(clamped);
       if (audioEl) {
         audioEl.volume = clamped;
         audioEl.muted = clamped === 0;
@@ -591,6 +715,12 @@ export const usePlayer = create<PlayerState>((set, get) => {
     },
 
     toggleMute() {
+      if (nativePlayer) {
+        const next = !get().muted;
+        nativePlayer.setVolume(next ? 0 : get().volume);
+        set({ muted: next });
+        return;
+      }
       if (!audioEl) return;
       audioEl.muted = !audioEl.muted;
       set({ muted: audioEl.muted });
@@ -600,6 +730,7 @@ export const usePlayer = create<PlayerState>((set, get) => {
       get().reportProgress(false);
       get().clearSleep();
       stopReporting();
+      if (nativePlayer) nativePlayer.stop();
       if (audioEl) {
         audioEl.pause();
         audioEl.removeAttribute("src");
@@ -671,7 +802,8 @@ export const usePlayer = create<PlayerState>((set, get) => {
     },
 
     pauseForSleep() {
-      audioEl?.pause();
+      if (nativePlayer) nativePlayer.pause();
+      else audioEl?.pause();
       get().clearSleep();
     },
 
@@ -887,3 +1019,50 @@ export function bindAudioElement(element: HTMLAudioElement | null): void {
     usePlayer.setState({ isPlaying: false, error: "音频加载失败，请重试" });
   });
 }
+
+/**
+ * 原生播放状态回调：Android 壳每 500ms 推一次，更新网页 UI。
+ * 普通浏览器不会走到这里。
+ */
+function setupNativePlayerState(): void {
+  if (!nativePlayer) return;
+  window.__shelfPlayer = window.__shelfPlayer ?? {};
+  window.__shelfPlayer.onState = (json: string) => {
+    try {
+      const state = JSON.parse(json) as NativeState;
+      const current = usePlayer.getState();
+      if (!current.book) return;
+      const hasError = Boolean(state.error);
+      const track = hasError ? null : current.tracks[state.trackIndex];
+      const wasPlaying = current.isPlaying;
+      const nativeVolume =
+        !hasError && typeof state.volume === "number"
+          ? state.volume
+          : current.volume;
+      usePlayer.setState({
+        isPlaying: hasError ? false : Boolean(state.playing),
+        isLoading: hasError ? false : Boolean(state.buffering),
+        positionSec: hasError
+          ? current.positionSec
+          : Number(state.positionSec) || 0,
+        trackId: track?.id ?? current.trackId,
+        rate: Number(state.rate) || current.rate,
+        volume: nativeVolume,
+        muted: nativeVolume === 0,
+        error: state.error ?? null,
+      });
+      current.handleSleepTick(Number(state.positionSec) || 0);
+      if (wasPlaying && !state.playing && !state.buffering) {
+        stopReporting();
+        usePlayer.getState().reportProgress(false);
+      }
+      if (!wasPlaying && state.playing) {
+        startReporting();
+      }
+    } catch {
+      // 原生状态格式异常时忽略，不影响网页播放
+    }
+  };
+}
+
+setupNativePlayerState();

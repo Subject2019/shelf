@@ -1,4 +1,4 @@
-package com.echoshelf.pwa;
+package com.shelf.pwa;
 
 import android.app.Activity;
 import android.content.Intent;

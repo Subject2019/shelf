@@ -148,22 +148,28 @@ src/
 └── styles/       # Tailwind 入口与主题变量
 ```
 
-播放器内核使用**单个全局 `<audio>` 元素**（`PlayerBar` 持有），切页不中断；`MediaSession API` 提供锁屏/系统媒体控制；`useEffect` 里每 15s 上报进度。
+播放器内核使用**单个全局 `<audio>` 元素**（`PlayerBar` 持有），切页不中断；`MediaSession API` 提供锁屏/系统媒体控制；`useEffect` 里每 15s 上报进度。Android 壳内改由原生 Media3 接管音频，见 §6。
 
-## 6. 安卓架构（android）
+## 6. 安卓架构（android-pwa）
+
+当前发布客户端是 `android-pwa/`：WebView 复用 WebUI，原生 Media3 只负责音频播放。`android/` 的 Compose 版是早期实验，已搁置。
 
 ```
-app/src/main/java/com/echoshelf/app/
-├── data/        # Retrofit API、Repository、DTO
-├── database/    # Room：离线书籍与音频索引、本地进度队列
-├── player/      # Media3 PlaybackService（前台服务）、Playlist 构建、进度上报
-├── di/          # Hilt modules
-└── ui/          # Compose：Login / Library / BookDetail / Player / Downloads
+android-pwa/app/src/main/java/com/shelf/pwa/
+├── SetupActivity.java   首次启动：填写并校验服务器地址（/api/v1/health）
+├── MainActivity.java    WebView、状态栏安全区、ShelfPlayer JS 桥、通知权限
+└── player/
+    ├── PlaybackService.java  MediaSessionService + ExoPlayer + 媒体通知
+    └── NativePlayer.java     MediaController：播放列表、片头片尾、状态回传
 ```
 
-- `MediaSessionService` + `ExoPlayer` 实现后台播放与锁屏控制。
-- 离线：下载原始文件到 app 私有目录（`files/books/{id}/`），Room 记录 `downloaded` 状态；播放优先本地，缺失才流式。
-- 进度：本地先写 Room（`pending_progress`），联网时批量 PUT，冲突按服务端规则收敛。
+- **UI 复用**：壳不打包前端，启动后加载服务器 WebUI；登录、书库、播放页与浏览器一致。
+- **原生桥**：网页检测到 `window.ShelfPlayer` 后，把整本书的播放列表、起始位置、倍速和封面交给原生；原生每 500ms 回传播放状态。
+- **后台播放**：`MediaSessionService` + `ExoPlayer` 持有前台服务和媒体会话；`onTaskRemoved` 不停止播放。
+- **通知/锁屏**：五个标准 `playerCommand`（上一集、快退 15 秒、播放/暂停、快进 15 秒、下一集）；封面写入 `MediaMetadata.artworkData`；对系统隐藏时长和当前项 seek，隐藏进度条。
+- **前端耦合**：服务端 `web/dist` 必须包含 `ShelfPlayer` 适配层；只更新 APK 不会让旧网页走原生播放。
+
+详细构建、连接与排查见 [`android-pwa/README.md`](../android-pwa/README.md)。
 
 ## 7. 可观测性与容错
 

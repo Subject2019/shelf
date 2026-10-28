@@ -27,7 +27,7 @@
 
 ## 简介
 
-shelf 是一个面向 NAS 的自托管有声书服务器。把有声书目录挂载进容器，shelf 会自动扫描、识别标签 / 章节 / CUE、提取封面并入库；网页端提供完整的播放器，支持多端进度同步；同一套 WebUI 也可作为手机 PWA 或 Android WebView 壳使用。
+shelf 是一个面向 NAS 的自托管有声书服务器。把有声书目录挂载进容器，shelf 会自动扫描、识别标签 / 章节 / CUE、提取封面并入库；网页端提供完整的播放器，支持多端进度同步；同一套 WebUI 也可作为 Android 壳使用（WebView 负责界面，原生 Media3 负责后台播放与状态栏/锁屏控制）。
 
 设计目标是 **单容器 + SQLite** 的轻量部署：无需额外的数据库或消息队列，一台普通 NAS 即可承载大规模文件索引与多路并发播放。
 
@@ -104,9 +104,10 @@ shelf 是一个面向 NAS 的自托管有声书服务器。把有声书目录挂
 
 ### 客户端
 
-- WebUI 响应式布局，可作为 PWA 安装
-- Android WebView 壳（`android-pwa/`）：复用 WebUI，支持系统返回键、状态栏安全区适配
-- 原生 Compose 版（`android/`）为早期实验，已搁置
+- WebUI 响应式布局，浏览器直接使用（未内置 service worker，暂不等同完整 PWA）
+- Android 壳（`android-pwa/`，包名 `com.shelf.pwa`，当前 0.2.5）：WebView 复用 WebUI，原生 Media3 负责后台播放；状态栏/锁屏提供上一集、快退 15 秒、播放/暂停、快进 15 秒、下一集与封面，隐藏进度条
+- 原生播放依赖服务端 WebUI 中的 `ShelfPlayer` 适配层；升级 APK 或前端后请保持两端一致，否则会回退到 WebView `<audio>`，状态栏不显示媒体卡片
+- 原生 Compose 版（`android/`）为早期实验，已搁置；其 Media3 播放服务已被 WebView 壳复用
 
 ## 技术栈
 
@@ -114,7 +115,7 @@ shelf 是一个面向 NAS 的自托管有声书服务器。把有声书目录挂
 |---|---|
 | 后端 | Python 3.11+ · FastAPI · SQLAlchemy 2.0 · Alembic · SQLite（WAL / FTS5）· mutagen · ffmpeg |
 | 网页端 | React 18 · TypeScript · Vite · TailwindCSS · Zustand · TanStack Query |
-| 移动端 | Android WebView 壳（`android-pwa/`）· PWA |
+| 移动端 | Android WebView 壳 + 原生 Media3 播放（`android-pwa/`） |
 | 部署 | Docker 多阶段构建（单镜像含前端静态资源）· docker compose · systemd |
 
 ## 架构概览
@@ -192,6 +193,36 @@ npm run dev        # http://localhost:5173 ，/api 代理到 127.0.0.1:8080
 docker build -f deploy/docker/Dockerfile -t shelf:latest .
 ```
 
+### Android 客户端（android-pwa）
+
+WebView 壳不内置网页：启动后从服务器加载 WebUI，音频播放由原生 Media3 前台服务接管。完整说明见 [`android-pwa/README.md`](./android-pwa/README.md)。
+
+**构建**
+
+```bash
+cd android-pwa
+./gradlew assembleDebug
+# 产物：app/build/outputs/apk/debug/app-debug.apk
+```
+
+需要 JDK 17+ 与 Android SDK 35；首次构建会下载 Gradle 8.7、AGP 和 Media3 1.3.1。
+
+**安装与连接**
+
+1. 安装 APK（允许未知来源）。
+2. 首次启动填写 shelf 地址，例如 `http://<NAS_IP>:8080`；开发环境可填 Vite 地址 `http://<开发机_IP>:5173`。
+3. Android 13+ 首次启动会申请通知权限，必须允许，否则状态栏/锁屏没有媒体卡片。
+4. 长按页面可随时「更改服务器」。
+
+**通知与播放**
+
+- 按钮顺序：上一集、快退 15 秒、播放/暂停、快进 15 秒、下一集；全部以标准播放器动作提交，具体间距由手机系统媒体卡片决定。
+- 封面由网页抓取后以字节写入 `MediaMetadata`，不依赖系统加载远程封面。
+- 对系统隐藏时长与当前项 seek 命令，因此媒体卡片不显示可拖动进度条；个别 ROM 仍可能强制显示。
+- 系统媒体卡片不支持音量滑杆，音量使用 App 内音量条或手机音量键。
+
+> **前端必须同步更新**：壳只提供原生桥，网页不调用 `ShelfPlayer` 时仍走 WebView `<audio>`。生产环境更新 APK 后，需要重新构建并部署 `web/`（Docker 镜像或静态 `dist`）。
+
 ## 配置项
 
 宿主机 `.env`（compose）/ 容器环境变量：
@@ -236,7 +267,10 @@ docker build -f deploy/docker/Dockerfile -t shelf:latest .
 shelf/
 ├── backend/                 FastAPI 服务（app/ + alembic/ + tests/）
 ├── web/                     React 网页端（Vite）
-├── android-pwa/             Android WebView 壳
+├── android-pwa/             Android WebView 壳 + 原生 Media3 播放
+│   ├── app/src/main/java/com/shelf/pwa/           壳、设置页与 JS 桥
+│   ├── app/src/main/java/com/shelf/pwa/player/    Media3 服务 / 控制器
+│   └── README.md                                  构建、连接与通知说明
 ├── android/                 原生 Compose 版（实验，已搁置）
 ├── deploy/
 │   ├── docker/              Dockerfile / entrypoint / compose
@@ -257,6 +291,7 @@ shelf/
 | [docs/DATA_MODEL.md](./docs/DATA_MODEL.md) | 数据库表结构 |
 | [docs/AUDIO_FORMATS.md](./docs/AUDIO_FORMATS.md) | 音频格式 / 章节 / CUE 支持矩阵 |
 | [docs/CLIENT_DOWNLOAD.md](./docs/CLIENT_DOWNLOAD.md) | 客户端按章节下载约定 |
+| [android-pwa/README.md](./android-pwa/README.md) | Android 壳构建、连接与通知说明 |
 | [docs/DEPLOY_NAS.md](./docs/DEPLOY_NAS.md) | NAS 部署与运维 |
 | [docs/ROADMAP.md](./docs/ROADMAP.md) | 里程碑与任务拆解 |
 | [docs/ADR/](./docs/ADR/) | 架构决策记录 |
@@ -275,9 +310,18 @@ shelf/
 **忘记管理员密码？**
 修改 `ECHOSHELF_ADMIN_PASSWORD` 并重启（或开启同步开关）；也可进入容器执行 CLI 重置。
 
+**Android 状态栏/锁屏没有播放控件或封面？**
+先确认系统通知权限已允许（Android 13+），并确认 App 连接的是包含 `ShelfPlayer` 适配层的新前端（开发环境 5173，或已重建的生产镜像）。只更新 APK、服务端仍是旧 `web/dist` 时，网页不会调用原生桥，仍走 WebView `<audio>`。
+
+**Android 桌面图标被裁切/只显示一小块？**
+自适应图标前景已限制在安全区；如果仍是旧图标，卸载重装，或重启启动器/清除启动器缓存，因为启动器会缓存图标资源。
+
+**Android 通知按钮间距和预期不一致？**
+按钮顺序由 App 固定为上一集、快退、播放/暂停、快进、下一集；具体间距、分组和是否显示进度条由手机 ROM 的系统媒体卡片决定，部分 ROM 可能无法完全等分。
+
 ## 路线图
 
-核心 Web 端已完成；后续主要是打磨与移动端。详见 [`docs/ROADMAP.md`](./docs/ROADMAP.md)。
+Web 端与 Android 壳的核心链路已完成（Android 壳 0.2.5）；后续主要是发布、兼容性打磨与离线能力。详见 [`docs/ROADMAP.md`](./docs/ROADMAP.md)。
 
 ## 许可证与作者
 

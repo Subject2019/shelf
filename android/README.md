@@ -1,4 +1,7 @@
-# android — 安卓 App
+# android — 安卓 App（早期实验，已搁置）
+
+> **已搁置**：当前安卓客户端采用 [`android-pwa/`](../android-pwa/README.md)（WebView 壳 + 原生 Media3 播放）。
+> 本目录是早期 Compose 实验，保留作参考，不再作为发布客户端。
 
 **状态：首版可编译（2026-10-26）**。技术栈 Kotlin + Jetpack Compose + Media3 + Retrofit + kotlinx.serialization。
 首版为了先跑通，**暂未引入 Hilt / Room**（手写 `AppGraph` + SharedPreferences），离线下载落地时再补 Room。
