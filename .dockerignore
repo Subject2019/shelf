@@ -1,0 +1,33 @@
+# 构建上下文只需要源码：媒体、数据、依赖目录一律排除
+**/__pycache__
+**/*.pyc
+**/.pytest_cache
+**/.ruff_cache
+**/.mypy_cache
+**/.coverage
+**/.coverage.*
+**/htmlcov
+**/coverage.xml
+
+.git
+.gitignore
+.venv
+backend/.venv
+backend/data
+backend/tests
+data
+audiobooks
+tmp
+
+web/node_modules
+web/dist
+web/.vite
+
+deploy/.env
+*.log
+.DS_Store
+
+# 文档与截图不影响镜像
+docs
+*.md
+!web/README.md

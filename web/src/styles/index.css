@@ -1,0 +1,326 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* 声明支持双色，浏览器才不会对浅色页面做自动反色；具体值由 JS 覆盖 */
+    color-scheme: light dark;
+
+    /* 默认「暖橙」色阶；切换主题色时由 JS 覆盖这些变量 */
+    --brand-50: 253 246 238;
+    --brand-100: 249 231 210;
+    --brand-200: 242 203 164;
+    --brand-300: 234 169 111;
+    --brand-400: 229 154 82;
+    --brand-500: 232 132 60;
+    --brand-600: 209 106 37;
+    --brand-700: 174 82 30;
+    --brand-800: 139 66 32;
+    --brand-900: 113 56 30;
+  }
+
+  html {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* 画布背景跟随主题：移动端滚动回弹、地址栏区域露出的就是这层 */
+  html {
+    background-color: rgb(250 250 250);
+  }
+
+  html.dark {
+    background-color: rgb(11 13 16);
+  }
+
+  body {
+    @apply bg-zinc-50 text-zinc-900 antialiased;
+  }
+
+  html.dark body {
+    @apply bg-ink-950 text-zinc-100;
+  }
+
+  ::selection {
+    background: rgba(232, 132, 60, 0.35);
+  }
+
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(140, 140, 140, 0.35) transparent;
+  }
+}
+
+@layer components {
+  /* 玻璃表面：浅色偏白、深色偏透明，靠 backdrop 透出后面的渐变色斑 */
+  .glass {
+    @apply border border-zinc-200/60 bg-white/70 backdrop-blur-xl backdrop-saturate-150 dark:border-white/10 dark:bg-white/[0.055];
+  }
+
+  .glass-panel {
+    @apply bg-white/85 backdrop-blur-2xl backdrop-saturate-150 dark:bg-ink-900/70;
+  }
+
+  .glass-bar {
+    @apply border-zinc-200/60 bg-white/75 backdrop-blur-2xl backdrop-saturate-150 dark:border-white/5 dark:bg-ink-950/65;
+  }
+
+  /* 品牌渐变文字与按钮 */
+  .text-gradient {
+    @apply bg-brand-gradient bg-clip-text text-transparent;
+  }
+
+  .btn-gradient {
+    @apply bg-brand-gradient text-ink-950 shadow-glow-sm transition hover:brightness-110 active:brightness-95;
+  }
+}
+
+@layer utilities {
+  .safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+
+/* 页面切换淡入 */
+@keyframes page-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.animate-page-in {
+  animation: page-in 0.32s ease-out both;
+}
+
+/* 已播放进度上的流光，只在播放时跑 */
+@keyframes progress-shine {
+  from {
+    background-position: 180% 0;
+  }
+  to {
+    background-position: -180% 0;
+  }
+}
+
+.progress-shine {
+  background-image: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.55) 50%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: progress-shine 2.6s linear infinite;
+}
+
+/* 卡片 hover 时斜扫而过的一道高光 */
+@keyframes card-sweep {
+  from {
+    transform: translateX(-140%) skewX(-14deg);
+  }
+  to {
+    transform: translateX(240%) skewX(-14deg);
+  }
+}
+
+.group:hover .card-sweep {
+  animation: card-sweep 0.9s ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-page-in,
+  .progress-shine,
+  .group:hover .card-sweep {
+    animation: none !important;
+  }
+}
+
+/* 系列文件夹：后面几层「纸」向右错开叠放，像从书架里抽出来的一叠 */
+.folder-stack {
+  transform: translateX(var(--stack-shift, 0px));
+  transition:
+    transform 0.38s cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 0.32s ease;
+  will-change: transform;
+}
+
+.folder-stack--back {
+  --stack-shift: 12px;
+}
+
+.folder-stack--mid {
+  --stack-shift: 6px;
+}
+
+/* 悬停：整叠纸被往右抽出来 */
+.group:hover .folder-stack {
+  --stack-shift: 9px;
+}
+
+.group:hover .folder-stack--back {
+  --stack-shift: 18px;
+}
+
+/* 展开：纸被向右抽走并淡出，留出位置给展开的卷 */
+[data-folder-open="true"] .folder-stack {
+  --stack-shift: 18px;
+  opacity: 0;
+}
+
+[data-folder-open="true"] .folder-stack.folder-stack--back,
+[data-folder-open="true"] .folder-stack.folder-stack--mid {
+  --stack-shift: 18px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .folder-stack {
+    transition: none;
+  }
+}
+
+/* 展开：各卷像被从文件夹里抽出来 —— 由左向右滑入并放大到原尺寸 */
+@keyframes folder-card-in {
+  from {
+    opacity: 0;
+    transform: translateX(-34px) scale(0.94);
+  }
+  60% {
+    opacity: 1;
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes folder-card-out {
+  from {
+    opacity: 1;
+    transform: none;
+  }
+  to {
+    opacity: 0;
+    transform: translateX(-14px) scale(0.95);
+  }
+}
+
+.folder-card-in {
+  animation: folder-card-in 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: calc(var(--card-index, 0) * 65ms);
+}
+
+.folder-card-out {
+  animation: folder-card-out 0.18s ease-in both;
+  animation-delay: calc(var(--card-index, 0) * 20ms);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .folder-card-in,
+  .folder-card-out {
+    animation: none;
+  }
+}
+
+/* 背景主题色光晕：缓慢漂移 + 轻微呼吸，只改 transform，走合成层 */
+@keyframes glow-drift {
+  0% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  33% {
+    transform: translate3d(3.5%, -2.5%, 0) scale(1.07);
+  }
+  66% {
+    transform: translate3d(-2.5%, 3%, 0) scale(0.96);
+  }
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+.glow-drift {
+  will-change: transform;
+  transform-origin: center;
+  animation: glow-drift var(--glow-duration, 26s) ease-in-out infinite;
+  animation-delay: var(--glow-delay, 0s);
+}
+
+.glow-drift--reverse {
+  animation-direction: reverse;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .glow-drift {
+    animation: none;
+    will-change: auto;
+  }
+}
+
+/* 播放器进度条：3px 轨道 + 主题色填充 */
+.player-range {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 10px;
+  cursor: pointer;
+  background: transparent;
+}
+
+.player-range::-webkit-slider-runnable-track {
+  height: 3px;
+  border-radius: 999px;
+  background: linear-gradient(
+    to right,
+    rgb(var(--brand-600)) 0,
+    rgb(var(--brand-400)) var(--progress, 0%),
+    rgba(140, 140, 140, 0.25) var(--progress, 0%),
+    rgba(140, 140, 140, 0.25) 100%
+  );
+}
+
+.player-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 10px;
+  height: 10px;
+  margin-top: -3.5px;
+  border-radius: 50%;
+  background: rgb(var(--brand-500));
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.player-range:hover::-webkit-slider-thumb,
+.player-range:focus-visible::-webkit-slider-thumb {
+  opacity: 1;
+}
+
+/* 触屏没有 hover，全屏播放页的滑块常显，方便拖动 */
+.player-range--always::-webkit-slider-thumb {
+  opacity: 1;
+  width: 14px;
+  height: 14px;
+  margin-top: -5.5px;
+}
+
+.player-range::-moz-range-track {
+  height: 3px;
+  border-radius: 999px;
+  background: rgba(140, 140, 140, 0.28);
+}
+
+.player-range::-moz-range-progress {
+  height: 3px;
+  border-radius: 999px;
+  background: rgb(var(--brand-500));
+}
+
+.player-range::-moz-range-thumb {
+  width: 10px;
+  height: 10px;
+  border: 0;
+  border-radius: 50%;
+  background: rgb(var(--brand-500));
+}

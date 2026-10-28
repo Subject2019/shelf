@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="zh-CN" class="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <!-- 主题色与启动屏背景一致（暖白纸感），避免系统启动画面切到页面时闪色 -->
+    <meta name="theme-color" content="#f1ede4" />
+    <!-- 声明页面自带深浅两套配色，避免手机浏览器「强制深色网页」把白色反成深灰 -->
+    <meta name="color-scheme" content="light dark" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/icons/favicon-16.png" />
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon-180.png" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <meta name="description" content="shelf · 自托管有声书服务器" />
+    <meta name="author" content="subject" />
+    <title>shelf</title>
+
+    <!-- 启动屏：首帧铺底 + 自包含动画组件（defer 保证在 main.tsx 之前执行） -->
+    <link rel="stylesheet" href="/launch/splash-critical.css" />
+    <script defer src="/launch/shelf-splash.js"></script>
+    <noscript><style>shelf-launch-splash { display: none !important; }</style></noscript>
+
+    <script>
+      // 首屏前应用主题，避免浅色模式下闪烁（含移动端地址栏配色与 color-scheme）
+      try {
+        var root = document.documentElement;
+        var isLight = localStorage.getItem("echoshelf.theme") === "light";
+        root.style.colorScheme = isLight ? "light" : "dark";
+        if (isLight) {
+          root.classList.remove("dark");
+        }
+        var themeMeta = document.querySelector('meta[name="theme-color"]');
+        if (themeMeta) themeMeta.setAttribute("content", isLight ? "#fafafa" : "#0b0d10");
+      } catch (error) {
+        /* 忽略隐私模式下的存储异常 */
+      }
+    </script>
+  </head>
+  <body>
+    <!--
+      启动浮层必须是 <body> 的直接子元素，且排在 App 根节点之前：
+      这样它才能在显示期间把背景内容设为 inert，并在结束后自行移除。
+      skip-label 用中文「跳过」。
+    -->
+    <shelf-launch-splash
+      min-duration="2000"
+      max-duration="5000"
+      skip-after="900"
+      skip-label="跳过"
+    ></shelf-launch-splash>
+
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js').catch(() => {});
+        });
+      }
+    </script>
+  </body>
+</html>

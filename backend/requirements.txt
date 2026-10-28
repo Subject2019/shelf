@@ -1,0 +1,9 @@
+# EchoShelf 开发依赖：自身 + 运行时依赖
+-r requirements-prod.txt
+
+# 开发与测试
+pytest==8.3.4
+pytest-asyncio==0.25.0
+pytest-cov==6.0.0
+httpx==0.28.1
+ruff==0.8.4

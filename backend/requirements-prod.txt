@@ -1,0 +1,12 @@
+# EchoShelf 运行时依赖（打进镜像）；开发工具见 requirements.txt
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+pydantic==2.10.4
+pydantic-settings==2.7.1
+SQLAlchemy==2.0.36
+alembic==1.14.0
+mutagen==1.47.0
+PyJWT==2.10.1
+argon2-cffi==23.1.0
+python-multipart==0.0.20
+Pillow==13.0.0

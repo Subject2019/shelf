@@ -1,0 +1,28 @@
+[Unit]
+Description=EchoShelf 有声书服务器
+Documentation=https://github.com/echoshelf/echoshelf
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=@@RUN_USER@@
+Group=@@RUN_USER@@
+WorkingDirectory=@@PREFIX@@/app
+EnvironmentFile=@@ENV_FILE@@
+ExecStart=@@PREFIX@@/venv/bin/uvicorn app.main:app --host ${ECHOSHELF_HOST} --port ${ECHOSHELF_PORT} --proxy-headers --forwarded-allow-ips=*
+Restart=on-failure
+RestartSec=3
+TimeoutStopSec=20
+KillSignal=SIGTERM
+
+# 安全加固：程序目录只读、仅数据目录可写
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=@@DATA_DIR@@
+# 需要访问 SMB/NFS 挂载的媒体库时，保持默认即可；若报权限错误再收紧
+
+[Install]
+WantedBy=multi-user.target

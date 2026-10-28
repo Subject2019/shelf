@@ -1,0 +1,16 @@
+/* Load this in <head> before the first paint.
+   It paints the paper background while the custom element upgrades. */
+shelf-launch-splash {
+  position: fixed;
+  inset: 0;
+  z-index: 999999;
+  display: block;
+  margin: 0;
+  border: 0;
+  background: #f1ede4;
+  touch-action: none;
+}
+
+shelf-launch-splash[hidden] {
+  display: none !important;
+}

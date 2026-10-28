@@ -1,0 +1,91 @@
+# shelf 生产部署模板
+#
+# 用法（在 deploy/docker 目录下执行）：
+#   cp .env.example .env && vi .env
+#   docker compose up -d --build
+#
+# 镜像可本地构建（M3-T01 起）：
+#   docker compose build        # 等价于在仓库根目录 docker build -t ... .
+# 官方镜像 ghcr.io/shelf/shelf 待发布后可直接 pull。
+
+name: shelf
+
+services:
+  shelf:
+    image: ghcr.io/shelf/shelf:${ECHOSHELF_TAG:-latest}
+    # 本地没有该 tag 时用仓库里的 Dockerfile 构建（上下文是仓库根目录）
+    build:
+      context: ../..
+      dockerfile: deploy/docker/Dockerfile
+    container_name: shelf
+    restart: unless-stopped
+
+    ports:
+      # 只监听需要的网卡时写成 "192.168.1.10:8080:8080"
+      - "${ECHOSHELF_PORT:-8080}:8080"
+
+    environment:
+      TZ: ${TZ:-Asia/Shanghai}
+      ECHOSHELF_DATA_PATH: /data
+      ECHOSHELF_AUDIOBOOKS_PATH: /audiobooks
+      ECHOSHELF_LOG_LEVEL: ${ECHOSHELF_LOG_LEVEL:-info}
+      # 管理员只能带外创建：网页端没有初始化入口
+      # 二选一：明文密码，或指向 Docker secret 文件的 *_FILE（推荐）
+      ECHOSHELF_ADMIN_USERNAME: ${ECHOSHELF_ADMIN_USERNAME:-admin}
+      ECHOSHELF_ADMIN_PASSWORD: ${ECHOSHELF_ADMIN_PASSWORD:-}
+      ECHOSHELF_ADMIN_PASSWORD_FILE: ${ECHOSHELF_ADMIN_PASSWORD_FILE:-}
+      # true：每次启动都用上面的密码覆盖管理员（改完重启即生效）
+      # false（默认）：只在库为空时创建，之后改密码请用网页或 admin reset-password
+      ECHOSHELF_ADMIN_SYNC_PASSWORD: ${ECHOSHELF_ADMIN_SYNC_PASSWORD:-false}
+      ECHOSHELF_ALLOW_REGISTRATION: ${ECHOSHELF_ALLOW_REGISTRATION:-false}
+      ECHOSHELF_ENABLE_TRANSCODE: ${ECHOSHELF_ENABLE_TRANSCODE:-true}
+      ECHOSHELF_SCAN_VIRTUAL_CHAPTER_MIN: ${ECHOSHELF_SCAN_VIRTUAL_CHAPTER_MIN:-15}
+      # 按章节切片（客户端离线下载用），WebUI 不调用
+      ECHOSHELF_ENABLE_CHAPTER_CACHE: ${ECHOSHELF_ENABLE_CHAPTER_CACHE:-true}
+      ECHOSHELF_CHAPTER_CACHE_MAX_BYTES: ${ECHOSHELF_CHAPTER_CACHE_MAX_BYTES:-2147483648}
+      # 整轨转码（wma/ape → opus/mp3）
+      ECHOSHELF_TRANSCODE_MAX_BYTES: ${ECHOSHELF_TRANSCODE_MAX_BYTES:-4294967296}
+      ECHOSHELF_TRANSCODE_MAX_DURATION_SEC: ${ECHOSHELF_TRANSCODE_MAX_DURATION_SEC:-7200}
+      # 入口脚本按这两个值建用户并降权运行；首次启动会 chown -R 数据目录
+      PUID: ${PUID:-1000}
+      PGID: ${PGID:-1000}
+
+    volumes:
+      # 媒体库：只读。容器内路径必须与「书库设置」里填的一致
+      - ${AUDIOBOOKS_PATH:-/volume1/media/audiobooks}:/audiobooks:ro
+      # 多书库时可再加挂载，然后在网页端按子目录建库：
+      # - /volume2/media/english:/audiobooks/english:ro
+      # 配置/数据库/封面缓存（必须放本地盘，不要用 SMB/NFS）
+      - ${ECHOSHELF_DATA_PATH:-../../data}:/data
+
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - |
+          import sys, urllib.request
+          try:
+              r = urllib.request.urlopen("http://127.0.0.1:8080/api/v1/health", timeout=3)
+              sys.exit(0 if r.status == 200 else 1)
+          except Exception:
+              sys.exit(1)
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 40s
+
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+    deploy:
+      resources:
+        limits:
+          cpus: "${ECHOSHELF_CPUS:-2.0}"
+          memory: ${ECHOSHELF_MEMORY:-1g}
+
+    security_opt:
+      - no-new-privileges:true
