@@ -210,11 +210,11 @@ WebView 壳不内置网页：启动后从服务器加载 WebUI，音频播放由
 
 ```bash
 cd android-pwa
-./gradlew assembleDebug
-# 产物：app/build/outputs/apk/debug/app-debug.apk
+./gradlew assembleRelease
+# 产物：app/build/outputs/apk/release/app-release.apk
 ```
 
-需要 JDK 17+ 与 Android SDK 35；首次构建会下载 Gradle 8.7、AGP 和 Media3 1.3.1。
+需要 JDK 17+ 与 Android SDK 35；首次构建会下载 Gradle 8.7、AGP 和 Media3 1.3.1。release 签名使用本地 `android-pwa/keystore.properties` 与 `release.keystore`（不提交），请备份密钥。
 
 **安装与连接**
 

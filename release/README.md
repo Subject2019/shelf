@@ -8,8 +8,8 @@
 |---|---|---|---|
 | `shelf-<版本>-linux-<架构>-bare.tar.gz` | 294 KB | 常规部署包：后端源码 + 预构建前端 + `install.sh` | 解压后 `sudo ./install.sh` |
 | `shelf-<版本>-linux-<架构>-docker.tar.gz` | 90 MB | **Docker 镜像本体**（`docker save` 的归档，gzip 压缩） | `docker load -i` 后 `docker compose up -d` |
-| `shelf-<版本>-debug.apk` | 4.0 MB | Android WebView 壳 debug 包（debug 签名，测试用） | `adb install -r` 或直接安装 |
-| `*.sha256` | 106 B | 上面三个包的校验值 | `sha256sum -c xxx.sha256` |
+| `shelf-<版本>.apk` | 3.1 MB | Android WebView 壳 **release 签名**包 | `adb install -r` 或直接安装 |
+| `*.sha256` | 约 100 B | 上面三个包的校验值 | `sha256sum -c xxx.sha256` |
 
 示例：`shelf-0.2.5-linux-amd64-docker.tar.gz`
 
@@ -35,12 +35,12 @@ docker run -d --name shelf -p 8080:8080 \
 ### Android APK 怎么用
 
 ```bash
-sha256sum -c shelf-0.2.5-debug.apk.sha256
-adb install -r shelf-0.2.5-debug.apk
+sha256sum -c shelf-0.2.5.apk.sha256
+adb install -r shelf-0.2.5.apk
 # 或把 APK 传到手机直接安装
 ```
 
-> 这是 debug 签名包，只适合自用/内测；正式分发前需要配置 release signingConfig。
+> 这是 **release 签名**包。之前安装过 debug 版的设备签名不一致，需要先卸载旧 App 再安装。
 
 ## 怎么生成
 
@@ -55,7 +55,7 @@ deploy/build-release.sh --skip-web
 deploy/build-release.sh --docker
 ```
 
-脚本会自动把 `android-pwa/app-debug.apk` 复制为 `shelf-<版本>-debug.apk` 并生成校验；如果 APK 不存在则跳过。
+脚本会自动把 `android-pwa/app/build/outputs/apk/release/app-release.apk` 复制为 `shelf-<版本>.apk` 并生成校验；如果 APK 不存在则跳过。release 签名读取本地 `android-pwa/keystore.properties` 与 `release.keystore`（均不提交），请务必备份密钥。
 
 版本号来自 `backend/app/core/config.py` 的 `APP_VERSION`，架构取 `uname -m`（amd64 / arm64）。
 

@@ -74,7 +74,7 @@ deploy/build-release.sh --docker        # 再导出离线镜像（最慢，建�
 |---|---|---|
 | `shelf-0.2.5-linux-amd64-bare.tar.gz` | 294 KB | 解压后 `sudo ./install.sh` |
 | `shelf-0.2.5-linux-amd64-docker.tar.gz` | 90 MB | `docker load -i` 后离线运行（tag `0.2.5` 与 `latest`） |
-| `shelf-0.2.5-debug.apk` | 4.0 MB | Android WebView 壳 debug 包 |
+| `shelf-0.2.5.apk` | 3.1 MB | Android WebView 壳 release 签名包 |
 
 ## 备份与检查
 

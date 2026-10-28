@@ -26,11 +26,11 @@ app/src/main/java/com/shelf/pwa/
 
 ```bash
 cd android-pwa
-./gradlew assembleDebug
-# 产物：app/build/outputs/apk/debug/app-debug.apk
+./gradlew assembleRelease
+# 产物：app/build/outputs/apk/release/app-release.apk
 ```
 
-首次构建需要联网下载 Gradle 8.7、AGP 与 Media3；之后可离线构建。Release 构建目前未配置签名，正式分发前请在 `app/build.gradle` 增加 `signingConfigs`。
+首次构建需要联网下载 Gradle 8.7、AGP 与 Media3；之后可离线构建。release 签名读取本地 `keystore.properties` + `release.keystore`（均在 `.gitignore` 中），缺失时输出未签名包。**签名密钥务必备份，丢失后无法覆盖升级已安装的 App。**
 
 ## 安装与连接
 

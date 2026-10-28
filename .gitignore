@@ -57,6 +57,7 @@ android/.idea/
 *.aab
 *.jks
 *.keystore
+android-pwa/keystore.properties
 
 # ---------- Android（android-pwa WebView 壳） ----------
 android-pwa/.gradle/

@@ -78,7 +78,7 @@
 
 | ID | 任务 | 状态 / 验收 |
 |---|---|---|
-| M5-T01 | Gradle + WebView 壳，minSdk 24 | ✅ `assembleDebug` 出 APK，能装能启动 |
+| M5-T01 | Gradle + WebView 壳，minSdk 24 | ✅ `assembleRelease` 出 release 签名 APK，能装能启动 |
 | M5-T02 | 服务器地址校验、登录/书库复用 WebUI | ✅ 首次启动 `/api/v1/health` 校验；长按可更改服务器 |
 | M5-T03 | Media3 `MediaSessionService` + 通知 + 锁屏 | ✅ 后台播放；上一集/快退 15 秒/播放/快进 15 秒/下一集；封面；隐藏进度条 |
 | M5-T04 | 离线下载 | ⏳ 未实现（服务端预切片/断点下载已就绪） |

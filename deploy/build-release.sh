@@ -9,7 +9,7 @@
 # 产物：
 #   release/shelf-<ver>-linux-<arch>-bare.tar.gz(+.sha256)
 #   release/shelf-<ver>-linux-<arch>-docker.tar.gz(+.sha256)   # --docker
-#   release/shelf-<ver>-debug.apk(+.sha256)                      # 若已构建 android-pwa
+#   release/shelf-<ver>.apk(+.sha256)                            # 若已构建 android-pwa release
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -111,12 +111,12 @@ tar -C "$STAGE_ROOT" -czf "$TARBALL" "$NAME"
 (cd "$RELEASE_DIR" && sha256sum "$(basename "$TARBALL")" > "$(basename "$TARBALL").sha256")
 
 # ---------------------------------------------------------------- Android APK（可选）
-# APK 版本需与 APP_VERSION 一致；当前取 android-pwa 的 debug 包。
-APK="$ROOT/android-pwa/app-debug.apk"
+# APK 版本需与 APP_VERSION 一致；取 assembleRelease 的已签名产物。
+APK="$ROOT/android-pwa/app/build/outputs/apk/release/app-release.apk"
 if [[ -f "$APK" ]]; then
-    log "复制 Android debug APK"
-    cp "$APK" "$RELEASE_DIR/shelf-$VERSION-debug.apk"
-    (cd "$RELEASE_DIR" && sha256sum "shelf-$VERSION-debug.apk" > "shelf-$VERSION-debug.apk.sha256")
+    log "复制 Android release APK"
+    cp "$APK" "$RELEASE_DIR/shelf-$VERSION.apk"
+    (cd "$RELEASE_DIR" && sha256sum "shelf-$VERSION.apk" > "shelf-$VERSION.apk.sha256")
 fi
 
 # ---------------------------------------------------------------- Docker（可选，最慢）
