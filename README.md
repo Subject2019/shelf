@@ -11,6 +11,7 @@
 ## 目录
 
 - [简介](#简介)
+- [界面预览](#界面预览)
 - [功能特性](#功能特性)
 - [技术栈](#技术栈)
 - [架构概览](#架构概览)
@@ -29,6 +30,40 @@
 shelf 是一个面向 NAS 的自托管有声书服务器。把有声书目录挂载进容器，shelf 会自动扫描、识别标签 / 章节 / CUE、提取封面并入库；网页端提供完整的播放器，支持多端进度同步；同一套 WebUI 也可作为手机 PWA 或 Android WebView 壳使用。
 
 设计目标是 **单容器 + SQLite** 的轻量部署：无需额外的数据库或消息队列，一台普通 NAS 即可承载大规模文件索引与多路并发播放。
+
+## 界面预览
+
+> 截图来自开发环境（demo 账号 + 示例书库），暗色主题。
+
+### 桌面端（1440×900）
+
+<p align="center">
+  <img src="./assets/screenshots/01-desktop-home.png" width="49%" alt="桌面端首页" />
+  <img src="./assets/screenshots/02-desktop-library.png" width="49%" alt="桌面端书库" />
+</p>
+<p align="center">
+  <img src="./assets/screenshots/03-desktop-book.png" width="49%" alt="桌面端书籍详情" />
+  <img src="./assets/screenshots/04-desktop-player.png" width="49%" alt="桌面端播放页" />
+</p>
+<p align="center">
+  <img src="./assets/screenshots/05-desktop-settings.png" width="49%" alt="桌面端设置" />
+  <img src="./assets/screenshots/06-desktop-settings-library.png" width="49%" alt="桌面端书库设置" />
+</p>
+<p align="center">
+  <img src="./assets/screenshots/07-desktop-authors.png" width="70%" alt="桌面端作者视图" />
+</p>
+
+### 手机端（390×844）
+
+<p align="center">
+  <img src="./assets/screenshots/08-mobile-home.png" width="32%" alt="手机端首页" />
+  <img src="./assets/screenshots/09-mobile-library.png" width="32%" alt="手机端书库" />
+  <img src="./assets/screenshots/10-mobile-book.png" width="32%" alt="手机端书籍详情" />
+</p>
+<p align="center">
+  <img src="./assets/screenshots/11-mobile-player.png" width="32%" alt="手机端播放页" />
+  <img src="./assets/screenshots/12-mobile-settings.png" width="32%" alt="手机端设置" />
+</p>
 
 ## 功能特性
 
