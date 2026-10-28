@@ -9,6 +9,7 @@
 # 产物：
 #   release/shelf-<ver>-linux-<arch>-bare.tar.gz(+.sha256)
 #   release/shelf-<ver>-linux-<arch>-docker.tar.gz(+.sha256)   # --docker
+#   release/shelf-<ver>-debug.apk(+.sha256)                      # 若已构建 android-pwa
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -109,6 +110,15 @@ log "打包 $TARBALL"
 tar -C "$STAGE_ROOT" -czf "$TARBALL" "$NAME"
 (cd "$RELEASE_DIR" && sha256sum "$(basename "$TARBALL")" > "$(basename "$TARBALL").sha256")
 
+# ---------------------------------------------------------------- Android APK（可选）
+# APK 版本需与 APP_VERSION 一致；当前取 android-pwa 的 debug 包。
+APK="$ROOT/android-pwa/app-debug.apk"
+if [[ -f "$APK" ]]; then
+    log "复制 Android debug APK"
+    cp "$APK" "$RELEASE_DIR/shelf-$VERSION-debug.apk"
+    (cd "$RELEASE_DIR" && sha256sum "shelf-$VERSION-debug.apk" > "shelf-$VERSION-debug.apk.sha256")
+fi
+
 # ---------------------------------------------------------------- Docker（可选，最慢）
 if [[ "$BUILD_DOCKER" = "1" ]]; then
     command -v docker >/dev/null || die "缺少 docker"
@@ -140,4 +150,5 @@ if [[ "$KEEP_STAGE" != "1" ]]; then
 fi
 
 log "完成，产物："
-ls -lh "$RELEASE_DIR"/*.tar.gz* 2>/dev/null | awk '{printf "  %-70s %s\n", $9, $5}'
+ls -lh "$RELEASE_DIR"/*.tar.gz* "$RELEASE_DIR"/*.apk* 2>/dev/null \
+    | awk '{printf "  %-70s %s\n", $9, $5}'

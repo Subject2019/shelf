@@ -16,7 +16,7 @@ DEVICE = {
     "id": "dev-pytest",
     "name": "pytest",
     "platform": "web",
-    "app_version": "0.1.0",
+    "app_version": "0.2.5",
 }
 
 

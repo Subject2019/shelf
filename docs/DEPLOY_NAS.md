@@ -249,12 +249,12 @@ deploy/scripts/restore.sh /path/to/backups/echoshelf-20261026-021500.tar.gz
 cd ~/echoshelf && docker compose pull && docker compose up -d
 
 # 无网络 / 离线包：先 load 再起来
-docker load -i shelf-0.1.0-linux-amd64-docker.tar.gz
+docker load -i shelf-0.2.5-linux-amd64-docker.tar.gz
 docker compose up -d          # 启动时自动 alembic upgrade head
 docker image prune -f
 ```
 
-镜像有两个 tag：`shelf:<版本>`（如 `0.1.0`，固定用）与 `shelf:latest`（跟最新构建）。
+镜像有两个 tag：`shelf:<版本>`（如 `0.2.5`，固定用）与 `shelf:latest`（跟最新构建）。
 
 迁移失败会拒绝启动（日志 `migration failed`），此时回滚镜像 tag 并用备份恢复数据库。
 

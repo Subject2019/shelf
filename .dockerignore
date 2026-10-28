@@ -19,6 +19,14 @@ data
 audiobooks
 tmp
 
+# 发布物、Android 工程与截图不参与镜像构建
+release
+android
+android-pwa
+assets
+screenshots
+附加文件
+
 web/node_modules
 web/dist
 web/.vite

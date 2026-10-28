@@ -79,7 +79,7 @@ export function describeDevice(): DeviceProfile {
   return {
     name: browser.version ? `${browser.name} ${browser.version}` : browser.name,
     platform: "web",
-    app_version: "0.1.0",
+    app_version: "0.2.5",
     os: osOf(userAgent),
     form_factor: formFactorOf(userAgent),
     screen: `${window.screen.width}×${window.screen.height}${dpr > 1 ? ` · ${dpr}x` : ""}`,

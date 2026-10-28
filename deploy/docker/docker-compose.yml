@@ -12,7 +12,7 @@ name: shelf
 
 services:
   shelf:
-    image: ghcr.io/shelf/shelf:${ECHOSHELF_TAG:-latest}
+    image: ghcr.io/subject2019/shelf:${ECHOSHELF_TAG:-latest}
     # 本地没有该 tag 时用仓库里的 Dockerfile 构建（上下文是仓库根目录）
     build:
       context: ../..

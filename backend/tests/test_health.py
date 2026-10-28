@@ -1,12 +1,14 @@
 from __future__ import annotations
 
+from app.core.config import APP_VERSION
+
 
 def test_health_returns_ok(client) -> None:
     response = client.get("/api/v1/health")
     assert response.status_code == 200
     payload = response.json()
     assert payload["status"] == "ok"
-    assert payload["version"] == "0.1.0"
+    assert payload["version"] == APP_VERSION
     assert payload["db"] == "ok"
     # 其他用例可能已写入书库，这里只校验字段类型与可用性
     assert isinstance(payload["libraries"], int)

@@ -75,7 +75,7 @@ docker exec -it shelf python -m app.cli admin list
 
 ## 注意
 
-- 官方镜像 `ghcr.io/shelf/shelf` 尚未发布；`docker compose build` 会用
+- 镜像地址为 `ghcr.io/subject2019/shelf`；`docker compose build` 会用
   `deploy/docker/Dockerfile` 构建同名 tag，无需联网拉镜像。
 - 容器按 `PUID` / `PGID` 降权运行（入口脚本建用户 + `su-exec`），首次启动会把数据目录
   `chown -R` 成该属主；`docker compose exec shelf id` 可确认实际身份。

@@ -1,6 +1,6 @@
 [project]
 name = "shelf"
-version = "0.1.0"
+version = "0.2.5"
 description = "自托管有声书服务器"
 authors = [{ name = "subject" }]
 requires-python = ">=3.11"

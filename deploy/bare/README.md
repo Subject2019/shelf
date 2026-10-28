@@ -7,11 +7,11 @@
 
 ```bash
 # 1. 拿到包与校验值
-sha256sum -c echoshelf-0.1.0-linux-amd64-bare.tar.gz.sha256
+sha256sum -c shelf-0.2.5-linux-amd64-bare.tar.gz.sha256
 
 # 2. 解压并安装
-tar xzf echoshelf-0.1.0-linux-amd64-bare.tar.gz
-cd echoshelf-0.1.0-linux-amd64
+tar xzf shelf-0.2.5-linux-amd64-bare.tar.gz
+cd shelf-0.2.5-linux-amd64
 sudo ./install.sh --audiobooks /volume1/media/audiobooks
 ```
 

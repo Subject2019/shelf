@@ -28,7 +28,7 @@ deploy/
 
 | 方式 | 适合 | 优点 | 代价 |
 |---|---|---|---|
-| Docker | 群晖 / 威联通 / unRAID / 有 Docker 的 Linux | 一条命令、依赖隔离、升级换镜像 | 需要 Docker；镜像约 363 MB |
+| Docker | 群晖 / 威联通 / unRAID / 有 Docker 的 Linux | 一条命令、依赖隔离、升级换镜像 | 需要 Docker；镜像约 365 MB |
 | 常规部署 | 没有 Docker、想复用系统 Python、或要自己控制进程 | 不依赖容器运行时，体积小（960 KB） | 需要系统有 Python 3.10+ 与 ffmpeg |
 
 两种方式的数据目录结构完全一致（`config/echoshelf.db`、`cache/`、`logs/`），
@@ -51,8 +51,8 @@ curl -s localhost:8080/api/v1/health
 # 先打一个分发包（或直接用别人给的同名 tar.gz）
 deploy/build-release.sh
 
-tar xzf release/shelf-0.1.0-linux-amd64-bare.tar.gz
-cd shelf-0.1.0-linux-amd64
+tar xzf release/shelf-0.2.5-linux-amd64-bare.tar.gz
+cd shelf-0.2.5-linux-amd64
 sudo ./install.sh --audiobooks /volume1/media/audiobooks
 systemctl status echoshelf
 ```
@@ -72,8 +72,9 @@ deploy/build-release.sh --docker        # 再导出离线镜像（最慢，建�
 
 | 文件 | 大小 | 用途 |
 |---|---|---|
-| `shelf-0.1.0-linux-amd64-bare.tar.gz` | 206 KB | 解压后 `sudo ./install.sh` |
-| `shelf-0.1.0-linux-amd64-docker.tar.gz` | 90 MB | `docker load -i` 后离线运行（镜像 364 MB，tag `0.1.0` 与 `latest`） |
+| `shelf-0.2.5-linux-amd64-bare.tar.gz` | 294 KB | 解压后 `sudo ./install.sh` |
+| `shelf-0.2.5-linux-amd64-docker.tar.gz` | 90 MB | `docker load -i` 后离线运行（tag `0.2.5` 与 `latest`） |
+| `shelf-0.2.5-debug.apk` | 4.0 MB | Android WebView 壳 debug 包 |
 
 ## 备份与检查
 
