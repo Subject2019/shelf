@@ -23,6 +23,15 @@ export interface NativePlayPayload {
   coverUrl?: string | null;
   /** 封面图的 base64（不带 data: 前缀）；有它时原生优先用内嵌 artwork，避免 HTTP 加载失败 */
   coverData?: string | null;
+  /** 当前书籍 ID，原生服务据此直接上报进度 */
+  bookId: number;
+  /** 服务器根地址，例如 http://192.168.1.10:8080 */
+  baseUrl: string;
+  /** 当前 access token；原生服务不落盘，只在内存中使用 */
+  token: string;
+  deviceId: string;
+  /** 是否从服务器进度恢复；只有恢复时才允许被原生本地较新进度覆盖 */
+  resume: boolean;
 }
 
 export interface NativeState {
@@ -39,6 +48,7 @@ export interface NativeState {
 
 export interface ShelfPlayerBridge {
   play(payload: string): void;
+  setAuth(token: string): void;
   pause(): void;
   resume(): void;
   seekTo(absoluteSec: number): void;

@@ -370,8 +370,11 @@ export const usePlayer = create<PlayerState>((set, get) => {
         if (!current.isPlaying) {
           // 先对齐账号的最新进度再播放：另一台设备可能已经听远了
           await get().syncFromServer();
-          if (nativePlayer) nativePlayer.resume();
-          else void audioEl?.play().catch(() => undefined);
+          if (nativePlayer) {
+            const token = getAccessToken();
+            if (token) nativePlayer.setAuth?.(token);
+            nativePlayer.resume();
+          } else void audioEl?.play().catch(() => undefined);
         } else if (nativePlayer) {
           nativePlayer.pause();
         } else {
@@ -493,6 +496,11 @@ export const usePlayer = create<PlayerState>((set, get) => {
             rate: get().rate,
             coverUrl,
             coverData,
+            bookId,
+            baseUrl: window.location.origin,
+            token: getAccessToken() ?? "",
+            deviceId: deviceId(),
+            resume: isRestore,
           };
           nativePlayer.play(JSON.stringify(payload));
           set({ isPlaying: true });
@@ -530,6 +538,8 @@ export const usePlayer = create<PlayerState>((set, get) => {
     toggle() {
       if (nativePlayer) {
         if (!get().book) return;
+        const token = getAccessToken();
+        if (token) nativePlayer.setAuth?.(token);
         if (get().isPlaying) nativePlayer.pause();
         else nativePlayer.resume();
         return;
@@ -901,6 +911,10 @@ export const usePlayer = create<PlayerState>((set, get) => {
       const book = state.book;
       if (!book) return;
 
+      const token = getAccessToken();
+      // 网页平时每 15 秒会调到这里，顺手把刷新后的 token 推给原生服务。
+      if (nativePlayer && token) nativePlayer.setAuth?.(token);
+
       const payload = {
         track_id: state.trackId,
         position_sec: Number(state.positionSec.toFixed(3)),
@@ -917,7 +931,7 @@ export const usePlayer = create<PlayerState>((set, get) => {
           keepalive: true,
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${getAccessToken() ?? ""}`,
+            Authorization: `Bearer ${token ?? ""}`,
           },
           body: JSON.stringify(payload),
         }).catch(() => undefined);
@@ -1027,6 +1041,13 @@ export function bindAudioElement(element: HTMLAudioElement | null): void {
 function setupNativePlayerState(): void {
   if (!nativePlayer) return;
   window.__shelfPlayer = window.__shelfPlayer ?? {};
+  // 网页暂停/后台时也定期把可能已刷新的 token 推给原生服务；真正播放时
+  // reportProgress 还会每 15 秒推一次。
+  window.setInterval(() => {
+    const token = getAccessToken();
+    if (token) nativePlayer.setAuth?.(token);
+  }, 60_000);
+
   window.__shelfPlayer.onState = (json: string) => {
     try {
       const state = JSON.parse(json) as NativeState;

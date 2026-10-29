@@ -98,12 +98,20 @@ PUT /api/v1/progress/{book_id}
 
 客户端启动/进入书籍详情时 `GET /api/v1/progress/{book_id}` 拉权威值；书架 `GET /api/v1/progress/recent?limit=20` 展示「继续收听」。
 
+Android 壳内有两路上报：
+
+- WebView 存活时，网页仍按 15s/暂停/seek/退出上报；
+- `PlaybackService` 不依赖 WebView，播放中每 15s 直接 `PUT`，暂停、seek、切轨、播放结束、从最近任务划掉、服务销毁时补报；
+- 网页把 `bookId/baseUrl/accessToken/deviceId` 通过 `PROGRESS_CONTEXT` 自定义命令注入服务，token 只存在内存；
+- 上报失败时最新位置写 `SharedPreferences`（`ProgressStore`），重开同一本书时补传，并在恢复播放时优先使用本地较新的位置；
+- access token 30 分钟过期且 WebView 已销毁时，服务无法续期，进度先本地保存，重开 App 后补传。
+
 ### 3.4 鉴权
 
 - 密码：`argon2id`（备选 bcrypt）。
 - `POST /auth/login` → `access_token`（30min，JWT，`sub=user_id`）+ `refresh_token`（30d，存库可吊销）。
 - 网页端：access token 存内存，refresh 用 httpOnly cookie；避免 localStorage 被 XSS 读取。
-- 安卓端：两者均存 EncryptedSharedPreferences。
+- 安卓 WebView 壳：网页端继续管理登录态；原生播放服务只接收网页注入的 access token 内存副本（不落盘），用于后台上报进度。
 - 首次启动：管理员只能带外创建——容器用 `ECHOSHELF_ADMIN_PASSWORD` / `_FILE`，裸机用 `echoshelf admin create`；网页端无初始化接口，接口也不接受 `role="admin"`。
 - 权限：`role ∈ {admin, user}`；`library_users` 表做书库级授权（空 = 全员可见）。
 

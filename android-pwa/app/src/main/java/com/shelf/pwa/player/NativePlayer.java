@@ -38,6 +38,8 @@ public class NativePlayer {
 
     private static final String TAG = "ShelfNativePlayer";
     private static final String CMD_SEEK_TO = "com.shelf.pwa.SEEK_TO";
+    private static final String CMD_PROGRESS_CONTEXT = "com.shelf.pwa.PROGRESS_CONTEXT";
+    private static final String CMD_PROGRESS_TOKEN = "com.shelf.pwa.PROGRESS_TOKEN";
 
     private final Context context;
     private final StateSink sink;
@@ -47,6 +49,12 @@ public class NativePlayer {
     private String pendingPlay;
     private boolean released;
     private String lastError;
+
+    private long bookId;
+    private String baseUrl = "";
+    private String authToken = "";
+    private String deviceId = "";
+    private boolean resumePending;
 
     private final List<TrackInfo> tracks = new ArrayList<>();
 
@@ -165,6 +173,12 @@ public class NativePlayer {
                 } else if (artwork != null) {
                     metadata.setArtworkUri(artwork);
                 }
+                Bundle trackExtras = new Bundle();
+                trackExtras.putInt("trackId", info.id);
+                trackExtras.putDouble("offsetSec", info.offsetSec);
+                trackExtras.putDouble("clipStartSec", info.clipStartSec);
+                trackExtras.putDouble("durationSec", info.durationSec);
+                metadata.setExtras(trackExtras);
 
                 MediaItem mediaItem = new MediaItem.Builder()
                         .setUri(item.getString("url"))
@@ -183,6 +197,31 @@ public class NativePlayer {
             int startIndex = Math.max(0, Math.min(root.optInt("startIndex", 0), items.size() - 1));
             double startPositionSec = root.optDouble("startPositionSec", 0);
             float rate = (float) root.optDouble("rate", 1.0);
+
+            bookId = root.optLong("bookId", 0);
+            String payloadBaseUrl = root.optString("baseUrl", "");
+            if (!payloadBaseUrl.isEmpty()) baseUrl = payloadBaseUrl;
+            String payloadToken = root.optString("token", "");
+            if (!payloadToken.isEmpty()) authToken = payloadToken;
+            String payloadDevice = root.optString("deviceId", "");
+            if (!payloadDevice.isEmpty()) deviceId = payloadDevice;
+            resumePending = root.optBoolean("resume", false);
+
+            // 原生本地有更新的进度（例如 token 过期导致补传失败）时，恢复播放优先用它。
+            if (resumePending && bookId > 0) {
+                JSONObject pending = ProgressStore.load(context, bookId);
+                if (pending != null) {
+                    double pendingPosition = pending.optDouble("position_sec", 0);
+                    int pendingTrackId = pending.optInt("track_id", 0);
+                    int pendingIndex = indexOfTrack(pendingTrackId);
+                    if (pendingPosition > startPositionSec + 1 && pendingIndex >= 0) {
+                        startIndex = pendingIndex;
+                        startPositionSec = pendingPosition;
+                    }
+                }
+            }
+
+            sendProgressContext();
             TrackInfo startTrack = tracks.get(startIndex);
             double inClip = Math.max(
                     0, startPositionSec - startTrack.offsetSec - startTrack.clipStartSec);
@@ -197,6 +236,8 @@ public class NativePlayer {
             controller.sendCustomCommand(
                     new SessionCommand(CMD_SEEK_TO, Bundle.EMPTY), startArgs);
             controller.play();
+            // 再发一次，确保服务在 setMediaItems 之后拿到上下文（自定义命令可能排队）。
+            sendProgressContext();
         } catch (Exception error) {
             Log.e(TAG, "play failed", error);
             emitError("播放失败：" + error.getMessage());
@@ -235,6 +276,40 @@ public class NativePlayer {
 
     public void setVolume(float volume) {
         if (controller != null) controller.setVolume(volume);
+    }
+
+    /** 网页刷新 access token 后调用，让后台服务继续上报。 */
+    public void setAuth(String token) {
+        if (token == null || token.isEmpty()) return;
+        authToken = token;
+        sendProgressToken();
+    }
+
+    private void sendProgressToken() {
+        if (controller == null || bookId <= 0 || baseUrl.isEmpty()) return;
+        Bundle args = new Bundle();
+        args.putString("token", authToken);
+        controller.sendCustomCommand(
+                new SessionCommand(CMD_PROGRESS_TOKEN, Bundle.EMPTY), args);
+    }
+
+    private void sendProgressContext() {
+        if (controller == null || bookId <= 0 || baseUrl.isEmpty()) return;
+        Bundle args = new Bundle();
+        args.putLong("bookId", bookId);
+        args.putString("baseUrl", baseUrl);
+        args.putString("token", authToken);
+        args.putString("deviceId", deviceId);
+        args.putBoolean("flushPending", resumePending);
+        controller.sendCustomCommand(
+                new SessionCommand(CMD_PROGRESS_CONTEXT, Bundle.EMPTY), args);
+    }
+
+    private int indexOfTrack(int id) {
+        for (int i = 0; i < tracks.size(); i++) {
+            if (tracks.get(i).id == id) return i;
+        }
+        return -1;
     }
 
     public void next() {

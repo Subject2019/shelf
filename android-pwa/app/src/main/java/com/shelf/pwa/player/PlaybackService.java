@@ -8,6 +8,7 @@ import android.os.Bundle;
 import androidx.media3.common.AudioAttributes;
 import androidx.media3.common.C;
 import androidx.media3.common.ForwardingPlayer;
+import androidx.media3.common.MediaItem;
 import androidx.media3.common.Player;
 import androidx.media3.exoplayer.ExoPlayer;
 import androidx.media3.session.CommandButton;
@@ -38,11 +39,14 @@ import java.util.List;
  */
 public class PlaybackService extends MediaSessionService {
     private static final String CMD_SEEK_TO = "com.shelf.pwa.SEEK_TO";
+    private static final String CMD_PROGRESS_CONTEXT = "com.shelf.pwa.PROGRESS_CONTEXT";
+    private static final String CMD_PROGRESS_TOKEN = "com.shelf.pwa.PROGRESS_TOKEN";
     private static final long SEEK_STEP_MS = 15_000;
 
     private ExoPlayer player;
     private Player sessionPlayer;
     private MediaSession session;
+    private ProgressReporter progressReporter;
 
     @Override
     public void onCreate() {
@@ -76,12 +80,50 @@ public class PlaybackService extends MediaSessionService {
                 .setCustomLayout(buildButtons(false))
                 .build();
 
+        progressReporter = new ProgressReporter(this, player);
+        progressReporter.start();
+
         // 播放/暂停图标随状态切换；系统卡片和通知会一起刷新。
         player.addListener(new Player.Listener() {
             @Override
             public void onIsPlayingChanged(boolean isPlaying) {
                 if (session != null) {
                     session.setCustomLayout(buildButtons(isPlaying));
+                }
+                // 不管 WebView 是否还在，真正暂停/播放结束时立刻补一次进度；
+                // prepare/buffering 阶段不写，避免切书瞬间把 0 写进新书。
+                int playbackState = player.getPlaybackState();
+                if (!isPlaying
+                        && (playbackState == Player.STATE_READY
+                        || playbackState == Player.STATE_ENDED)
+                        && progressReporter != null) {
+                    progressReporter.reportNow(false);
+                }
+            }
+
+            @Override
+            public void onPlaybackStateChanged(int playbackState) {
+                if (playbackState == Player.STATE_ENDED && progressReporter != null) {
+                    progressReporter.reportNow(false);
+                }
+            }
+
+            @Override
+            public void onPositionDiscontinuity(
+                    Player.PositionInfo oldPosition,
+                    Player.PositionInfo newPosition,
+                    int reason) {
+                if (reason == Player.DISCONTINUITY_REASON_SEEK && progressReporter != null) {
+                    progressReporter.reportNow(true);
+                }
+            }
+
+            @Override
+            public void onMediaItemTransition(MediaItem mediaItem, int reason) {
+                // 整本播放列表替换时不要上报，避免把上一本的旧位置写到新 bookId。
+                if (reason != Player.MEDIA_ITEM_TRANSITION_REASON_PLAYLIST_CHANGED
+                        && progressReporter != null) {
+                    progressReporter.reportNow(false);
                 }
             }
         });
@@ -171,6 +213,8 @@ public class PlaybackService extends MediaSessionService {
                 MediaSession session, MediaSession.ControllerInfo controller) {
             SessionCommands commands = new SessionCommands.Builder()
                     .add(new SessionCommand(CMD_SEEK_TO, Bundle.EMPTY))
+                    .add(new SessionCommand(CMD_PROGRESS_CONTEXT, Bundle.EMPTY))
+                    .add(new SessionCommand(CMD_PROGRESS_TOKEN, Bundle.EMPTY))
                     .build();
             // 保留 session 的自定义布局和播放器命令；不要用 ConnectionResult.accept(...)。
             return new MediaSession.ConnectionResult.AcceptedResultBuilder(session)
@@ -188,6 +232,23 @@ public class PlaybackService extends MediaSessionService {
                 int index = args.getInt("index", 0);
                 long positionMs = args.getLong("positionMs", 0);
                 player.seekTo(index, positionMs);
+                return success();
+            }
+            if (CMD_PROGRESS_CONTEXT.equals(command.customAction)) {
+                if (progressReporter != null) {
+                    progressReporter.setContext(
+                            args.getLong("bookId", 0),
+                            args.getString("baseUrl", ""),
+                            args.getString("token", ""),
+                            args.getString("deviceId", ""),
+                            args.getBoolean("flushPending", false));
+                }
+                return success();
+            }
+            if (CMD_PROGRESS_TOKEN.equals(command.customAction)) {
+                if (progressReporter != null) {
+                    progressReporter.setToken(args.getString("token", ""));
+                }
                 return success();
             }
             return Futures.immediateFuture(
@@ -227,11 +288,19 @@ public class PlaybackService extends MediaSessionService {
 
     @Override
     public void onTaskRemoved(Intent rootIntent) {
-        // 从最近任务划掉后继续播放，不要 stopSelf
+        // 从最近任务划掉后继续播放，不要 stopSelf；但先把当前位置落一次本地并上报。
+        if (progressReporter != null) {
+            progressReporter.reportNow(false);
+        }
     }
 
     @Override
     public void onDestroy() {
+        if (progressReporter != null) {
+            progressReporter.reportNow(false);
+            progressReporter.shutdown();
+            progressReporter = null;
+        }
         if (session != null) {
             session.release();
             session = null;

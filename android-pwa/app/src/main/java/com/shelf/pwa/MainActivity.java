@@ -259,6 +259,13 @@ public class MainActivity extends Activity {
         }
 
         @JavascriptInterface
+        public void setAuth(String token) {
+            runOnUiThread(() -> {
+                if (nativePlayer != null) nativePlayer.setAuth(token);
+            });
+        }
+
+        @JavascriptInterface
         public void pause() {
             runOnUiThread(() -> {
                 if (nativePlayer != null) nativePlayer.pause();
