@@ -254,7 +254,7 @@ docker compose up -d          # 启动时自动 alembic upgrade head
 docker image prune -f
 ```
 
-镜像有两个 tag：`shelf:<版本>`（如 `0.2.5`，固定用）与 `shelf:latest`（跟最新构建）。
+镜像有两个 tag：`shelf:<版本>`（如 `0.2.7`，固定用）与 `shelf:latest`（跟最新构建）。
 
 迁移失败会拒绝启动（日志 `migration failed`），此时回滚镜像 tag 并用备份恢复数据库。
 

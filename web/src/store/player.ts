@@ -148,6 +148,68 @@ export function chapterIndexAt(chapters: Chapter[], positionSec: number): number
   return index;
 }
 
+/**
+ * 播放进度条使用的「当前一集」范围。
+ *
+ * - 多音轨（文件夹形式）：一集 = 当前音频文件；
+ * - 单音轨（MP4/M4B 等大文件）且有章节：一集 = 当前章节；
+ * - 单音轨且无章节：一集 = 整个音轨。
+ *
+ * 返回的位置始终是整本书的绝对秒数，seek 时用 startSec + 单集内偏移。
+ */
+export interface PlaybackSegment {
+  startSec: number;
+  durationSec: number;
+  title: string | null;
+  kind: "chapter" | "track";
+}
+
+export function currentPlaybackSegment(
+  book: BookDetail | null,
+  tracks: TrackWithOffset[],
+  trackId: number | null,
+  positionSec: number,
+): PlaybackSegment | null {
+  const chapters = book?.chapters ?? [];
+  const track = findTrackById(tracks, trackId) ?? trackAt(tracks, positionSec);
+  const trackEnd = track ? track.offsetSec + track.duration_sec : null;
+
+  // 单文件大音频的章节才是“一集”；多文件书按文件切集。
+  if (tracks.length === 1 && chapters.length > 0) {
+    const index = chapterIndexAt(chapters, positionSec);
+    const chapter = chapters[index];
+    if (chapter) {
+      const startSec = chapter.start_sec;
+      const nextStart = chapters[index + 1]?.start_sec;
+      const fallbackEnd =
+        nextStart ?? trackEnd ?? book?.total_duration_sec ?? startSec;
+      let endSec = chapter.end_sec ?? fallbackEnd;
+
+      if (trackEnd !== null) endSec = Math.min(endSec, trackEnd);
+      if (book && book.total_duration_sec > 0) {
+        endSec = Math.min(endSec, book.total_duration_sec);
+      }
+      if (endSec <= startSec) endSec = fallbackEnd;
+      if (endSec <= startSec) endSec = startSec;
+
+      return {
+        startSec,
+        durationSec: Math.max(0, endSec - startSec),
+        title: chapter.title,
+        kind: "chapter",
+      };
+    }
+  }
+
+  if (!track) return null;
+  return {
+    startSec: track.offsetSec,
+    durationSec: Math.max(0, track.duration_sec),
+    title: track.title,
+    kind: "track",
+  };
+}
+
 function startReporting() {
   if (reportTimer) return;
   reportTimer = window.setInterval(() => {

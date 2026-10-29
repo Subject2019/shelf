@@ -20,6 +20,8 @@ export default function FullPlayer({
   bookmarkAdded,
 }: FullPlayerProps) {
   const book = usePlayer((state) => state.book);
+  const tracks = usePlayer((state) => state.tracks);
+  const trackId = usePlayer((state) => state.trackId);
   const positionSec = usePlayer((state) => state.positionSec);
   const rate = usePlayer((state) => state.rate);
 
@@ -28,6 +30,7 @@ export default function FullPlayer({
   const chapters = book.chapters ?? [];
   const chapterIndex =
     chapters.length > 0 ? chapterIndexAt(chapters, positionSec) : 0;
+  const trackIndex = tracks.findIndex((track) => track.id === trackId);
 
   function cycleRate() {
     const index = RATES.indexOf(rate);
@@ -58,7 +61,9 @@ export default function FullPlayer({
           <p className="mt-0.5 text-xs text-zinc-500">
             {chapters.length > 0
               ? `第 ${chapterIndex + 1} / ${chapters.length} 章`
-              : "单轨音频"}
+              : tracks.length > 1
+                ? `第 ${Math.max(1, trackIndex + 1)} / ${tracks.length} 集`
+                : "单轨音频"}
           </p>
         </div>
 

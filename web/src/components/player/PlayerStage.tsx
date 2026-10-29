@@ -1,7 +1,11 @@
 import { useState, type CSSProperties } from "react";
 
 import { formatClock } from "../../lib/format";
-import { chapterIndexAt, usePlayer } from "../../store/player";
+import {
+  chapterIndexAt,
+  currentPlaybackSegment,
+  usePlayer,
+} from "../../store/player";
 import Cover from "../ui/Cover";
 import { Icon } from "../ui/Icon";
 import PlayerTools from "./PlayerTools";
@@ -17,7 +21,6 @@ export default function PlayerStage({ compact = false }: PlayerStageProps) {
   const trackId = usePlayer((state) => state.trackId);
   const isPlaying = usePlayer((state) => state.isPlaying);
   const positionSec = usePlayer((state) => state.positionSec);
-  const durationSec = usePlayer((state) => state.durationSec);
   const error = usePlayer((state) => state.error);
 
   const [scrub, setScrub] = useState<number | null>(null);
@@ -27,17 +30,27 @@ export default function PlayerStage({ compact = false }: PlayerStageProps) {
   const chapters = book.chapters ?? [];
   const chapterIndex = chapters.length > 0 ? chapterIndexAt(chapters, positionSec) : 0;
   const currentChapter = chapters[chapterIndex] ?? null;
-  const hasPrev = chapters.length > 0 ? chapterIndex > 0 : false;
+  const trackIndex = tracks.findIndex((item) => item.id === trackId);
+  const hasPrev =
+    chapters.length > 0 ? chapterIndex > 0 : trackIndex > 0;
   const hasNext =
-    chapters.length > 0 ? chapterIndex < chapters.length - 1 : false;
+    chapters.length > 0
+      ? chapterIndex < chapters.length - 1
+      : trackIndex >= 0 && trackIndex < tracks.length - 1;
 
   const track = tracks.find((item) => item.id === trackId) ?? null;
-  const shown = scrub ?? positionSec;
-  const percent = durationSec > 0 ? Math.min(100, (shown / durationSec) * 100) : 0;
+  const segment = currentPlaybackSegment(book, tracks, trackId, positionSec);
+  const segmentDuration = segment?.durationSec ?? 0;
+  const segmentPosition = segment
+    ? Math.max(0, Math.min(segmentDuration, positionSec - segment.startSec))
+    : 0;
+  const shown = scrub ?? segmentPosition;
+  const percent =
+    segmentDuration > 0 ? Math.min(100, (shown / segmentDuration) * 100) : 0;
 
   function commitScrub() {
-    if (scrub === null) return;
-    usePlayer.getState().seekWithUndo(scrub);
+    if (scrub === null || !segment) return;
+    usePlayer.getState().seekWithUndo(segment.startSec + scrub);
     setScrub(null);
   }
 
@@ -58,7 +71,7 @@ export default function PlayerStage({ compact = false }: PlayerStageProps) {
       </h1>
       <p className="mt-1 text-sm text-zinc-500">{book.author ?? "未知作者"}</p>
       <p className="mt-3 max-w-full truncate text-xs text-brand-500">
-        {currentChapter?.title ?? track?.title ?? ""}
+        {segment?.title ?? currentChapter?.title ?? track?.title ?? ""}
       </p>
       {error && <p className="mt-2 text-[11px] text-amber-500">{error}</p>}
 
@@ -67,15 +80,18 @@ export default function PlayerStage({ compact = false }: PlayerStageProps) {
           <input
             type="range"
             min={0}
-            max={Math.max(1, Math.floor(durationSec))}
+            max={Math.max(1, Math.floor(segmentDuration))}
             step={1}
-            value={Math.min(Math.floor(shown), Math.max(1, Math.floor(durationSec)))}
+            value={Math.min(
+              Math.floor(shown),
+              Math.max(1, Math.floor(segmentDuration)),
+            )}
             onChange={(event) => setScrub(Number(event.target.value))}
             onPointerUp={commitScrub}
             onTouchEnd={commitScrub}
             onKeyUp={commitScrub}
             onBlur={commitScrub}
-            aria-label="播放进度"
+            aria-label="当前单集播放进度"
             style={{ "--progress": `${percent}%` } as CSSProperties}
             className="player-range player-range--always block w-full"
           />
@@ -92,7 +108,7 @@ export default function PlayerStage({ compact = false }: PlayerStageProps) {
 
         <div className="mt-1.5 flex justify-between text-[11px] tabular-nums text-zinc-500">
           <span>{formatClock(shown)}</span>
-          <span>-{formatClock(Math.max(0, durationSec - shown))}</span>
+          <span>-{formatClock(Math.max(0, segmentDuration - shown))}</span>
         </div>
       </div>
 

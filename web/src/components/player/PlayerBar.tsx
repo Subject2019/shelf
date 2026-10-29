@@ -6,7 +6,12 @@ import { api } from "../../api/endpoints";
 import type { BookmarkCreate } from "../../api/types";
 import { formatClock } from "../../lib/format";
 import { RATES } from "../../lib/playback";
-import { bindAudioElement, chapterIndexAt, usePlayer } from "../../store/player";
+import {
+  bindAudioElement,
+  chapterIndexAt,
+  currentPlaybackSegment,
+  usePlayer,
+} from "../../store/player";
 import Cover from "../ui/Cover";
 import { Icon } from "../ui/Icon";
 import FullPlayer from "./FullPlayer";
@@ -26,7 +31,6 @@ export default function PlayerBar() {
   const isPlaying = usePlayer((state) => state.isPlaying);
   const isLoading = usePlayer((state) => state.isLoading);
   const positionSec = usePlayer((state) => state.positionSec);
-  const durationSec = usePlayer((state) => state.durationSec);
   const rate = usePlayer((state) => state.rate);
   const volume = usePlayer((state) => state.volume);
   const muted = usePlayer((state) => state.muted);
@@ -66,12 +70,18 @@ export default function PlayerBar() {
 
   const track = tracks.find((item) => item.id === trackId) ?? null;
   const index = tracks.findIndex((item) => item.id === trackId);
-  const shown = scrub ?? positionSec;
-  const percent = durationSec > 0 ? Math.min(100, (shown / durationSec) * 100) : 0;
+  const segment = currentPlaybackSegment(book, tracks, trackId, positionSec);
+  const segmentDuration = segment?.durationSec ?? 0;
+  const segmentPosition = segment
+    ? Math.max(0, Math.min(segmentDuration, positionSec - segment.startSec))
+    : 0;
+  const shown = scrub ?? segmentPosition;
+  const percent =
+    segmentDuration > 0 ? Math.min(100, (shown / segmentDuration) * 100) : 0;
 
   const chapters = book?.chapters ?? [];
   const hasChapters = chapters.length > 0;
-  const chapterIndex = hasChapters ? chapterIndexAt(chapters, shown) : 0;
+  const chapterIndex = hasChapters ? chapterIndexAt(chapters, positionSec) : 0;
   const currentChapter = chapters[chapterIndex] ?? null;
 
   const hasPrev = hasChapters ? chapterIndex > 0 : index > 0;
@@ -80,8 +90,8 @@ export default function PlayerBar() {
     : index >= 0 && index < tracks.length - 1;
 
   function commitScrub() {
-    if (scrub === null) return;
-    usePlayer.getState().seekWithUndo(scrub);
+    if (scrub === null || !segment) return;
+    usePlayer.getState().seekWithUndo(segment.startSec + scrub);
     setScrub(null);
   }
 
@@ -110,15 +120,18 @@ export default function PlayerBar() {
                 <input
                   type="range"
                   min={0}
-                  max={Math.max(1, Math.floor(durationSec))}
+                  max={Math.max(1, Math.floor(segmentDuration))}
                   step={1}
-                  value={Math.min(Math.floor(shown), Math.max(1, Math.floor(durationSec)))}
+                  value={Math.min(
+                    Math.floor(shown),
+                    Math.max(1, Math.floor(segmentDuration)),
+                  )}
                   onChange={(event) => setScrub(Number(event.target.value))}
                   onPointerUp={commitScrub}
                   onTouchEnd={commitScrub}
                   onKeyUp={commitScrub}
                   onBlur={commitScrub}
-                  aria-label="播放进度"
+                  aria-label="当前单集播放进度"
                   style={{ "--progress": `${percent}%` } as CSSProperties}
                   className="player-range block w-full"
                 />
@@ -160,11 +173,14 @@ export default function PlayerBar() {
                     >
                       <Icon name="list" className="size-3 shrink-0" />
                       <span className="truncate">
-                        {currentChapter?.title ?? track?.title ?? `第 ${index + 1} 轨`}
+                        {segment?.title ??
+                          currentChapter?.title ??
+                          track?.title ??
+                          `第 ${index + 1} 轨`}
                       </span>
                     </button>
                     <span className="hidden shrink-0 tabular-nums sm:inline">
-                      {formatClock(shown)} / {formatClock(durationSec)}
+                      {formatClock(shown)} / {formatClock(segmentDuration)}
                     </span>
                     {error && <span className="truncate text-amber-500">{error}</span>}
                   </div>

@@ -67,7 +67,7 @@ def _login(client, username: str, device_id: str, name: str, platform: str):
                 "id": device_id,
                 "name": name,
                 "platform": platform,
-                "app_version": "0.2.5",
+                "app_version": "0.2.7",
             },
         },
     )
@@ -105,7 +105,7 @@ def test_device_profile_is_stored_and_returned(client, device_env):
                 "id": "web-profile",
                 "name": "Chrome 141",
                 "platform": "web",
-                "app_version": "0.2.5",
+                "app_version": "0.2.7",
                 "os": "Android 14",
                 "form_factor": "phone",
                 "screen": "390×844 · 3x",
