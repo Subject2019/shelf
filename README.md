@@ -138,6 +138,10 @@ shelf 是一个面向 NAS 的自托管有声书服务器。把有声书目录挂
 
 ## 快速开始
 
+> 一键部署/升级/卸载请使用公开部署仓库：[Subject2019/shelf-docker](https://github.com/Subject2019/shelf-docker)。
+>
+> 容器镜像：[ghcr.io/subject2019/shelf](https://github.com/users/Subject2019/packages/container/shelf)。
+
 ### 方式一：Docker（推荐）
 
 ```bash
