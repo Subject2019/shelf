@@ -70,7 +70,7 @@
 | M4-T05 | 三级角色 `admin` / `editor` / `listener` ✅ 2026-10-25 | 听众只读；上传者可改资料/传封面、只能删自己传的封面；管理员全权 |
 | M4-T03 | 设备管理（在线状态、踢下线）✅ | 踢下线后该设备 refresh 立即 401，access token 也立即 401（`tests/test_devices_api.py`） |
 
-## M5 安卓客户端（已完成 0.2.6，2026-10-29）
+## M5 安卓客户端（已完成 0.2.7，2026-10-30）
 
 > 形态已确定：**Android WebView 壳 + 原生 Media3 播放**（`android-pwa/`），不再继续原生 Compose 客户端。
 > 壳从服务器加载 WebUI；网页检测 `ShelfPlayer` 后把音频交给原生。构建与连接见 [`android-pwa/README.md`](../android-pwa/README.md)。
@@ -80,7 +80,7 @@
 |---|---|---|
 | M5-T01 | Gradle + WebView 壳，minSdk 24 | ✅ `assembleRelease` 出 release 签名 APK，能装能启动 |
 | M5-T02 | 服务器地址校验、登录/书库复用 WebUI | ✅ 首次启动 `/api/v1/health` 校验；长按可更改服务器 |
-| M5-T03 | Media3 `MediaSessionService` + 通知 + 锁屏 | ✅ 后台播放；上一集/快退 15 秒/播放/快进 15 秒/下一集；封面；隐藏进度条 |
+| M5-T03 | Media3 `MediaSessionService` + 通知 + 锁屏 | ✅ 后台播放；上一集/快退 15 秒/播放/快进 15 秒/下一集；封面；单集进度条 |
 | M5-T04 | 离线下载 | ⏳ 未实现（服务端预切片/断点下载已就绪） |
 | M5-T05 | 进度同步 | ✅ Web + 原生双通道：原生服务每 15s 直报，暂停/seek/切轨/划掉任务/销毁补报；失败本地 pending，重开同书补传 |
 | M5-T06 | 明网 HTTP、深色模式、状态栏安全区 | ✅ `usesCleartextTraffic` + 主题/系统栏适配 |

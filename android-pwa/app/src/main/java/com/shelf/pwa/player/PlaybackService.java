@@ -7,7 +7,6 @@ import android.os.Bundle;
 
 import androidx.media3.common.AudioAttributes;
 import androidx.media3.common.C;
-import androidx.media3.common.ForwardingPlayer;
 import androidx.media3.common.MediaItem;
 import androidx.media3.common.Player;
 import androidx.media3.exoplayer.ExoPlayer;
@@ -30,7 +29,7 @@ import java.util.List;
 /**
  * 后台播放：MediaSessionService + ExoPlayer。
  * 系统媒体卡片由 media3 托管，这里做三件事：
- *   - 对外隐藏时长，去掉系统卡片的进度条；
+ *   - 对外暴露当前音轨的真实时长，让状态栏/锁屏显示播放进度条；
  *   - 五个标准播放器动作：上一集、快退15、播放/暂停、快进15、下一集；
  *   - 保留封面（MediaMetadata 由 NativePlayer 写入）。
  *
@@ -44,7 +43,6 @@ public class PlaybackService extends MediaSessionService {
     private static final long SEEK_STEP_MS = 15_000;
 
     private ExoPlayer player;
-    private Player sessionPlayer;
     private MediaSession session;
     private ProgressReporter progressReporter;
 
@@ -64,9 +62,6 @@ public class PlaybackService extends MediaSessionService {
                 .setSeekForwardIncrementMs(SEEK_STEP_MS)
                 .build();
 
-        // 只对系统会话隐藏时长；真实进度仍由 ExoPlayer / 网页各自维护。
-        sessionPlayer = new NoDurationPlayer(player);
-
         PendingIntent sessionActivity = PendingIntent.getActivity(
                 this,
                 0,
@@ -74,7 +69,7 @@ public class PlaybackService extends MediaSessionService {
                         .addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP),
                 PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
 
-        session = new MediaSession.Builder(this, sessionPlayer)
+        session = new MediaSession.Builder(this, player)
                 .setSessionActivity(sessionActivity)
                 .setCallback(new SessionCallback())
                 .setCustomLayout(buildButtons(false))
@@ -217,8 +212,11 @@ public class PlaybackService extends MediaSessionService {
                     .add(new SessionCommand(CMD_PROGRESS_TOKEN, Bundle.EMPTY))
                     .build();
             // 保留 session 的自定义布局和播放器命令；不要用 ConnectionResult.accept(...)。
+            // 显式把 ExoPlayer 的真实 player commands（含当前项 seek）交给系统，
+            // 媒体卡片才能根据 duration/position 渲染进度条并允许拖动。
             return new MediaSession.ConnectionResult.AcceptedResultBuilder(session)
                     .setAvailableSessionCommands(commands)
+                    .setAvailablePlayerCommands(session.getPlayer().getAvailableCommands())
                     .build();
         }
 
@@ -260,27 +258,6 @@ public class PlaybackService extends MediaSessionService {
         return Futures.immediateFuture(new SessionResult(SessionResult.RESULT_SUCCESS));
     }
 
-    private static final class NoDurationPlayer extends ForwardingPlayer {
-        NoDurationPlayer(Player player) {
-            super(player);
-        }
-
-        @Override
-        public long getDuration() {
-            return C.TIME_UNSET;
-        }
-
-        @Override
-        public Player.Commands getAvailableCommands() {
-            // 只隐藏“当前项内 seek”，保留上一集/下一集/快退/快进等标准动作。
-            return super.getAvailableCommands().buildUpon()
-                    .removeAll(
-                            Player.COMMAND_SEEK_TO_DEFAULT_POSITION,
-                            Player.COMMAND_SEEK_IN_CURRENT_MEDIA_ITEM)
-                    .build();
-        }
-    }
-
     @Override
     public MediaSession onGetSession(MediaSession.ControllerInfo controllerInfo) {
         return session;
@@ -309,7 +286,6 @@ public class PlaybackService extends MediaSessionService {
             player.release();
             player = null;
         }
-        sessionPlayer = null;
         super.onDestroy();
     }
 }

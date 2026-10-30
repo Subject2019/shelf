@@ -174,7 +174,7 @@ android-pwa/app/src/main/java/com/shelf/pwa/
 - **UI 复用**：壳不打包前端，启动后加载服务器 WebUI；登录、书库、播放页与浏览器一致。
 - **原生桥**：网页检测到 `window.ShelfPlayer` 后，把整本书的播放列表、起始位置、倍速和封面交给原生；原生每 500ms 回传播放状态。
 - **后台播放**：`MediaSessionService` + `ExoPlayer` 持有前台服务和媒体会话；`onTaskRemoved` 不停止播放。
-- **通知/锁屏**：五个标准 `playerCommand`（上一集、快退 15 秒、播放/暂停、快进 15 秒、下一集）；封面写入 `MediaMetadata.artworkData`；对系统隐藏时长和当前项 seek，隐藏进度条。
+- **通知/锁屏**：五个标准 `playerCommand`（上一集、快退 15 秒、播放/暂停、快进 15 秒、下一集）；封面写入 `MediaMetadata.artworkData`；对系统暴露当前音轨时长和当前项 seek，显示可拖动的单集进度条。
 - **前端耦合**：服务端 `web/dist` 必须包含 `ShelfPlayer` 适配层；只更新 APK 不会让旧网页走原生播放。
 
 详细构建、连接与排查见 [`android-pwa/README.md`](../android-pwa/README.md)。
