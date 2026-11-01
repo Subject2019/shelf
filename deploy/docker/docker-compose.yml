@@ -27,7 +27,6 @@ services:
     environment:
       TZ: ${TZ:-Asia/Shanghai}
       ECHOSHELF_DATA_PATH: /data
-      ECHOSHELF_AUDIOBOOKS_PATH: /audiobooks
       ECHOSHELF_LOG_LEVEL: ${ECHOSHELF_LOG_LEVEL:-info}
       # 管理员只能带外创建：网页端没有初始化入口
       # 二选一：明文密码，或指向 Docker secret 文件的 *_FILE（推荐）

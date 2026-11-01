@@ -54,6 +54,7 @@ RUN chmod -R a+rX /app /web \
 
 ENV ECHOSHELF_DATA_PATH=/data \
     ECHOSHELF_AUDIOBOOKS_PATH=/audiobooks \
+    ECHOSHELF_CONTAINER=1 \
     ECHOSHELF_HOST=0.0.0.0 \
     ECHOSHELF_PORT=8080
 

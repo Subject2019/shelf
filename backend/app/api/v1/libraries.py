@@ -10,6 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 
+from app.core.config import get_settings
 from app.core.security import get_current_user
 from app.db.base import now_ts
 from app.db.session import get_db
@@ -33,6 +34,13 @@ router = APIRouter(tags=["libraries"])
 
 # 单进程部署下用进程内锁消除「同时触发两次扫描」的竞态
 _scan_trigger_lock = threading.Lock()
+
+
+def _container_audiobooks_root() -> Path | None:
+    """Docker 镜像只挂载一个固定媒体根目录，书库不能跳出该目录。"""
+    if os.environ.get("ECHOSHELF_CONTAINER") != "1":
+        return None
+    return get_settings().audiobooks_path.expanduser().resolve()
 
 
 def _library_out(db: Session, library: Library) -> LibraryOut:
@@ -101,15 +109,35 @@ def create_library(
     _: User = Depends(require_admin),
     db: Session = Depends(get_db),
 ) -> LibraryOut:
-    root = Path(payload.root_path).expanduser()
+    root_input = Path(payload.root_path).expanduser()
+    if not root_input.is_absolute():
+        raise HTTPException(
+            status_code=400,
+            detail="请填写容器内绝对路径，例如 /audiobooks 或 /audiobooks/小说",
+        )
+    root = root_input.resolve()
+
+    container_root = _container_audiobooks_root()
+    if container_root is not None:
+        try:
+            root.relative_to(container_root)
+        except ValueError:
+            raise HTTPException(
+                status_code=400,
+                detail=f"书库路径必须位于容器内的有声书根目录 {container_root} 下；宿主机目录由 Docker 挂载决定",
+            ) from None
+
     if not root.is_dir():
-        raise HTTPException(status_code=400, detail="媒体目录不存在或不是目录")
+        raise HTTPException(
+            status_code=400,
+            detail="目录不存在或不是目录；Docker 部署请确认宿主机目录已挂载到 /audiobooks",
+        )
     if not os.access(root, os.R_OK | os.X_OK):
         raise HTTPException(
             status_code=400,
-            detail="媒体目录存在，但容器当前用户无权读取；请检查宿主机目录权限（可 chmod -R a+rX，或调整 PUID/PGID 后重启容器）",
+            detail="目录存在，但容器当前用户无权读取；请检查宿主机目录权限（可 chmod -R a+rX，或调整 PUID/PGID 后重启容器）",
         )
-    normalized = str(root.resolve())
+    normalized = str(root)
 
     exists = db.scalar(select(Library).where(Library.root_path == normalized))
     if exists is not None:

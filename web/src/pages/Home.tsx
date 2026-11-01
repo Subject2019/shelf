@@ -9,7 +9,7 @@ import { formatCount } from "../lib/format";
 import { useAuth } from "../store/auth";
 
 const STEPS = [
-  { title: "登记书库", detail: "填一个 NAS 上的音频目录，扫描全程只读，不改动文件。" },
+  { title: "登记书库", detail: "填一个容器内的有声书目录（Docker 默认 /audiobooks），扫描全程只读。" },
   { title: "自动入库", detail: "识别标签、CUE 与内嵌章节；重扫幂等，不会产生重复书籍。" },
   { title: "多端续听", detail: "网页与手机共享同一份进度，换设备接着上次的位置。" },
 ];

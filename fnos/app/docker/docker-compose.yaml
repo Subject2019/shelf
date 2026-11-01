@@ -1,6 +1,6 @@
 services:
   shelf:
-    image: ghcr.io/subject2019/shelf:0.2.7
+    image: ghcr.io/subject2019/shelf:0.2.8
     container_name: shelf-fnos
     restart: unless-stopped
     stop_grace_period: 30s
@@ -9,7 +9,6 @@ services:
     environment:
       TZ: Asia/Shanghai
       ECHOSHELF_DATA_PATH: /data
-      ECHOSHELF_AUDIOBOOKS_PATH: /audiobooks
       ECHOSHELF_ADMIN_USERNAME: "${wizard_admin_username:-admin}"
       ECHOSHELF_ADMIN_PASSWORD: "${wizard_admin_password:-}"
       ECHOSHELF_ENABLE_TRANSCODE: "${wizard_enable_transcode:-true}"

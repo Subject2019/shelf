@@ -8,12 +8,13 @@ import { Icon } from "../ui/Icon";
 
 const fieldClass =
   "h-10 w-full rounded-lg border border-zinc-200 bg-white px-3 text-sm outline-none transition focus:border-brand-500 dark:border-white/10 dark:bg-ink-950";
+const DEFAULT_ROOT_PATH = "/audiobooks";
 
 export default function LibrarySection() {
   const queryClient = useQueryClient();
   const [creating, setCreating] = useState(false);
   const [name, setName] = useState("");
-  const [rootPath, setRootPath] = useState("");
+  const [rootPath, setRootPath] = useState(DEFAULT_ROOT_PATH);
   const [formError, setFormError] = useState<string | null>(null);
   const [scanningId, setScanningId] = useState<number | null>(null);
   const [scanResult, setScanResult] = useState<{
@@ -63,7 +64,7 @@ export default function LibrarySection() {
     onSuccess: () => {
       setCreating(false);
       setName("");
-      setRootPath("");
+      setRootPath(DEFAULT_ROOT_PATH);
       setFormError(null);
       void queryClient.invalidateQueries({ queryKey: ["libraries"] });
     },
@@ -235,7 +236,7 @@ export default function LibrarySection() {
         <div>
           <h2 className="text-sm font-semibold">书库</h2>
           <p className="mt-1 text-xs text-zinc-500">
-            登记服务器上的目录，扫描后书籍才会出现在书架。
+            登记容器内的有声书目录，扫描后书籍才会出现在书架。
           </p>
         </div>
         <button
@@ -259,11 +260,17 @@ export default function LibrarySection() {
           <input
             value={rootPath}
             onChange={(event) => setRootPath(event.target.value)}
-            placeholder="服务器绝对路径，例如 /media/audiobooks"
+            placeholder="容器内目录，例如 /audiobooks"
             className={fieldClass}
           />
           <p className="text-[11px] leading-relaxed text-zinc-500">
-            请确保该目录在宿主机上对容器运行用户（PUID/PGID，默认 1000）可读，否则扫描会读不到文件。
+            Docker 部署时，宿主机的有声书目录已在创建容器时固定挂载到{" "}
+            <code className="rounded bg-zinc-100 px-1 dark:bg-white/10">{DEFAULT_ROOT_PATH}</code>
+            。这里填写容器内路径：默认为整个挂载目录；填写{" "}
+            <code className="rounded bg-zinc-100 px-1 dark:bg-white/10">
+              {DEFAULT_ROOT_PATH}/子目录
+            </code>{" "}
+            可单独登记子书库。裸机部署请改成实际目录。
           </p>
           {formError && <p className="text-[11px] text-rose-500">{formError}</p>}
           <div className="flex justify-end gap-2">

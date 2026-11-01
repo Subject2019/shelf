@@ -50,7 +50,7 @@ python3 -m venv .venv && . .venv/bin/activate    # 要求 Python ≥ 3.11
 pip install -r requirements.txt
 uvicorn app.main:app --reload --port 8080
 curl -s http://127.0.0.1:8080/api/v1/health
-# {"status":"ok","version":"0.2.7","db":"ok","ffmpeg":true,"libraries":0,"books":0,"uptime_sec":3}
+# {"status":"ok","version":"0.2.8","db":"ok","ffmpeg":true,"libraries":0,"books":0,"uptime_sec":3}
 ```
 
 配置全部走环境变量（模板见 `deploy/.env.example`）：`AUDIOBOOKS_PATH` 媒体目录、

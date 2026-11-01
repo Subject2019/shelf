@@ -259,7 +259,7 @@ sudo -u echoshelf /opt/echoshelf/bin/echoshelf admin create
 { "name": "有声书", "root_path": "/audiobooks", "user_ids": [1] }
 ```
 
-- `root_path` 是**服务端容器内路径**，必须已存在，否则 400；重复路径 409。
+- `root_path` 是**服务端容器内路径**，必须已存在，否则 400；Docker 部署时必须位于 `/audiobooks` 下；重复路径 409。
 - `user_ids` 省略/空数组 = 全员可见（不写授权行）。
 
 `201` → `LibraryOut`。
