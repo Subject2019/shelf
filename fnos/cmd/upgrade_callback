@@ -1,0 +1,5 @@
+#!/bin/bash
+set -euo pipefail
+
+# 容器由飞牛应用中心按新的 compose 配置重建。
+exit 0

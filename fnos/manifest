@@ -1,0 +1,20 @@
+appname               = shelf
+version               = 0.2.7
+display_name          = 声架
+desc                  = 自托管有声书服务器。把有声书放进 NAS，打开浏览器或 Android App 就能听。
+platform              = x86
+source                = thirdparty
+maintainer            = Subject
+maintainer_url        = https://github.com/Subject2019/shelf-docker
+distributor           = Subject
+distributor_url       = https://github.com/Subject2019/shelf-docker
+
+desktop_uidir         = ui
+desktop_applaunchname = shelf.main
+
+service_port          = 8080
+checkport             = true
+ctl_stop              = true
+disable_authorization_path = true
+
+changelog             = 首个飞牛应用版本：单容器部署声架 0.2.7，支持书库扫描、多格式播放、多端进度同步和 Android 原生后台播放。

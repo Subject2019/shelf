@@ -1,0 +1,48 @@
+[
+  {
+    "stepTitle": "初始化声架",
+    "items": [
+      {
+        "type": "tips",
+        "helpText": "安装完成后，把有声书放入“应用文件 → shelf → media”，声架会自动扫描。首次启动可能需要几十秒。"
+      },
+      {
+        "type": "text",
+        "field": "wizard_admin_username",
+        "label": "管理员用户名",
+        "initValue": "admin",
+        "rules": [
+          {
+            "required": true,
+            "message": "请输入管理员用户名"
+          },
+          {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{2,31}$",
+            "message": "用户名需为 3-32 位字母、数字、下划线或短横线"
+          }
+        ]
+      },
+      {
+        "type": "password",
+        "field": "wizard_admin_password",
+        "label": "管理员密码",
+        "rules": [
+          {
+            "required": true,
+            "message": "请输入管理员密码"
+          },
+          {
+            "min": 8,
+            "message": "密码至少 8 位"
+          }
+        ]
+      },
+      {
+        "type": "switch",
+        "field": "wizard_enable_transcode",
+        "label": "启用服务端转码",
+        "initValue": "true"
+      }
+    ]
+  }
+]

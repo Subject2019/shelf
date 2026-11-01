@@ -1,0 +1,43 @@
+#!/bin/bash
+set -euo pipefail
+
+log() {
+    printf '%s\n' "$*" >&2
+    if [[ -n "${TRIM_TEMP_LOGFILE:-}" ]]; then
+        printf '%s\n' "$*" >> "$TRIM_TEMP_LOGFILE"
+    fi
+}
+
+fail() {
+    log "声架安装失败：$*"
+    exit 1
+}
+
+[[ -n "${TRIM_PKGETC:-}" ]] || fail "缺少 TRIM_PKGETC 环境变量"
+mkdir -p "$TRIM_PKGETC"
+
+username="${wizard_admin_username:-admin}"
+password="${wizard_admin_password:-}"
+
+[[ "$username" =~ ^[A-Za-z0-9][A-Za-z0-9_-]{2,31}$ ]] || fail "管理员用户名格式不正确"
+[[ ${#password} -ge 8 ]] || fail "管理员密码至少需要 8 位"
+[[ "$password" != *$'\n'* ]] || fail "管理员密码不能包含换行"
+
+username="$(printf '%s' "$username" | tr '[:upper:]' '[:lower:]')"
+case "${wizard_enable_transcode:-true}" in
+    true|1|on|yes) transcode="true" ;;
+    *) transcode="false" ;;
+esac
+
+umask 077
+printf '%s' "$password" > "$TRIM_PKGETC/admin_password"
+chmod 600 "$TRIM_PKGETC/admin_password"
+
+cat > "$TRIM_PKGETC/shelf.env" <<EOF
+ECHOSHELF_ADMIN_USERNAME=$username
+ECHOSHELF_ENABLE_TRANSCODE=$transcode
+EOF
+chmod 600 "$TRIM_PKGETC/shelf.env"
+
+log "声架安装初始化完成"
+exit 0

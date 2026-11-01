@@ -138,3 +138,6 @@ android-pwa/.kotlin/
 # 截图与素材（体积大、非源码）
 /screenshots/
 /附加文件/
+
+# 飞牛 fpk 构建产物（不提交）
+/fnos/*.fpk

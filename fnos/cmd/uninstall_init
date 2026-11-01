@@ -1,0 +1,5 @@
+#!/bin/bash
+set -euo pipefail
+
+# 默认保留数据目录和媒体共享目录，避免误删有声书与播放进度。
+exit 0

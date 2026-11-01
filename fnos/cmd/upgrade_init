@@ -1,0 +1,5 @@
+#!/bin/bash
+set -euo pipefail
+
+# 数据、数据库和凭据都在 TRIM_PKGVAR / TRIM_PKGETC 中，升级时保留。
+exit 0

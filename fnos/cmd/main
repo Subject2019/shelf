@@ -1,0 +1,28 @@
+#!/bin/bash
+set -u
+
+CONTAINER_NAME="shelf-fnos"
+
+is_running() {
+    docker inspect --format '{{.State.Running}}' "$CONTAINER_NAME" 2>/dev/null | grep -qx 'true'
+}
+
+case "${1:-}" in
+    start)
+        # Docker 项目由飞牛应用中心拉起，这里不重复执行 docker compose。
+        exit 0
+        ;;
+    stop)
+        # Docker 项目由飞牛应用中心停止，这里不重复执行 docker compose。
+        exit 0
+        ;;
+    status)
+        if is_running; then
+            exit 0
+        fi
+        exit 3
+        ;;
+    *)
+        exit 1
+        ;;
+esac
