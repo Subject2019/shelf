@@ -9,6 +9,8 @@
 - 容器名：`shelf-fnos`
 - 默认端口：`8080`
 
+> 前置条件：飞牛设备需要能访问 GHCR，并且 `ghcr.io/subject2019/shelf:0.2.7` 必须为 Public；如果仍为 Private，请先在设备上执行 `docker login ghcr.io`。
+
 ## 目录结构
 
 ```text
@@ -88,6 +90,7 @@ ${TRIM_DATA_SHARE_PATHS}:/audiobooks:ro
 ## 已知限制
 
 - 当前镜像为 `linux/amd64`，因此 `manifest` 只声明 `platform=x86`；ARM 飞牛设备需要先构建多架构镜像。
+- 如果飞牛设备上 `8080` 已被占用，需要在 `manifest`、`app/ui/config` 和 Compose 中同步修改端口。
 - 首个版本固定使用飞牛数据共享目录 `shelf/media`，暂不支持在安装向导里直接选择任意宿主机目录。
 - 升级时会保留 `${TRIM_PKGVAR}` 和 `${TRIM_PKGETC}`；卸载时默认不删除数据，具体以飞牛应用中心提示为准。
 - 应用内的管理员密码修改仍通过声架 WebUI 完成；重新安装向导只负责首次管理员创建。
