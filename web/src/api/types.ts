@@ -217,6 +217,24 @@ export interface AuthorList {
   items: AuthorSummary[];
 }
 
+export interface CollectionSummary {
+  id: number;
+  name: string;
+  book_count: number;
+  created_at: number;
+  cover_url: string | null;
+  /** 查询时带 book_id 才有意义，用于详情页「加入书单」勾选状态 */
+  contains_book: boolean;
+}
+
+export interface CollectionList {
+  items: CollectionSummary[];
+}
+
+export interface CollectionDetail extends CollectionSummary {
+  books: Book[];
+}
+
 export interface Track {
   id: number;
   track_no: number;

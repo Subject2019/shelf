@@ -19,12 +19,11 @@ const NAV: { to: string; label: string; icon: IconName }[] = [
   { to: "/library", label: "书库", icon: "library" },
   { to: "/player", label: "播放", icon: "play" },
   { to: "/search", label: "搜索", icon: "search" },
-  { to: "/collections", label: "书单", icon: "collections" },
+  { to: "/collections", label: "书单", icon: "booklist" },
   { to: "/settings", label: "设置", icon: "settings" },
 ];
 
-// 手机底栏放不下 6 项，去掉仍是占位的「书单」
-const MOBILE_NAV = NAV.filter((item) => item.to !== "/collections");
+const MOBILE_NAV = NAV;
 
 function navClass(isActive: boolean): string {
   return [
@@ -95,7 +94,9 @@ export default function AppShell() {
   const current = NAV.find((item) => item.to === location.pathname);
   const pageTitle = location.pathname.startsWith("/books/")
     ? "书籍详情"
-    : current?.label ?? "shelf";
+    : location.pathname.startsWith("/collections/")
+      ? "书单"
+      : current?.label ?? "shelf";
 
   return (
     <div className="relative isolate min-h-dvh text-zinc-900 transition-colors dark:text-zinc-100">
@@ -260,7 +261,7 @@ export default function AppShell() {
               end={item.to === "/"}
               className={({ isActive }) =>
                 [
-                  "flex min-w-14 flex-col items-center gap-0.5 rounded-lg px-2 py-1 text-[11px] transition",
+                  "flex min-w-0 flex-1 flex-col items-center gap-0.5 rounded-lg px-1 py-1 text-[10px] transition",
                   isActive ? "text-brand-500" : "text-zinc-500",
                 ].join(" ")
               }

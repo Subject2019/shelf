@@ -5,6 +5,8 @@ import AppShell from "./components/layout/AppShell";
 import BookDetail from "./pages/BookDetail";
 import Home from "./pages/Home";
 import Authors from "./pages/Authors";
+import CollectionDetail from "./pages/CollectionDetail";
+import Collections from "./pages/Collections";
 import Library from "./pages/Library";
 import Login from "./pages/Login";
 import Placeholder from "./pages/Placeholder";
@@ -26,12 +28,8 @@ export default function App() {
           <Route path="player" element={<PlayerPage />} />
           <Route path="search" element={<Search />} />
           <Route path="books/:bookId" element={<BookDetail />} />
-          <Route
-            path="collections"
-            element={
-              <Placeholder title="书单" description="自定义书单将在书籍与播放链路完成后排期。" />
-            }
-          />
+          <Route path="collections" element={<Collections />} />
+          <Route path="collections/:collectionId" element={<CollectionDetail />} />
         </Route>
 
         <Route path="settings" element={<Settings />} />

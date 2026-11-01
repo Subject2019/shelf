@@ -12,9 +12,11 @@
 FROM node:20-alpine AS web
 
 WORKDIR /build/web
+# 允许在无法直连 npmjs 的构建环境指定镜像源；默认仍是官方源
+ARG NPM_REGISTRY=https://registry.npmjs.org
 # 先只拷依赖清单，利用层缓存：源码改动不会重装 node_modules
 COPY web/package.json web/package-lock.json ./
-RUN npm ci --no-audit --no-fund
+RUN npm ci --no-audit --no-fund --registry="${NPM_REGISTRY}"
 
 COPY web/ ./
 RUN npm run build

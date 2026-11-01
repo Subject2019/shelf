@@ -1,6 +1,6 @@
 services:
   shelf:
-    image: ghcr.io/subject2019/shelf:0.2.8
+    image: ghcr.io/subject2019/shelf:0.2.9
     container_name: shelf-fnos
     restart: unless-stopped
     stop_grace_period: 30s

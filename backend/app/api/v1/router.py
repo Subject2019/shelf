@@ -9,6 +9,7 @@ from app.api.v1 import (
     bookmarks,
     books,
     chapters,
+    collections,
     devices,
     libraries,
     progress,
@@ -23,6 +24,7 @@ api_router.include_router(system.router)
 api_router.include_router(auth.router)
 api_router.include_router(libraries.router)
 api_router.include_router(books.router)
+api_router.include_router(collections.router)
 api_router.include_router(chapters.router)
 api_router.include_router(users.router)
 api_router.include_router(devices.router)

@@ -1,4 +1,4 @@
-# EchoShelf HTTP API 契约（v0.2.7）
+# EchoShelf HTTP API 契约（v0.2.9）
 
 > 面向 WebUI、安卓 App 与第三方客户端。本文件与代码同步维护，**以服务端实现为准**。
 > 机器可读契约：`GET /api/openapi.json`，交互式文档：`GET /api/docs`。
@@ -74,7 +74,7 @@ Swagger UI GET /api/docs
 书库可见性：`library_users` **没有任何授权行 = 全员可见**；一旦有行，则只对该清单内用户可见。
 管理员始终可见全部。越权访问返回 403。
 
-### 0.6 接口总览（49 个操作）
+### 0.6 接口总览（56 个操作）
 
 | 分组 | 方法 | 路径 | 权限 |
 |---|---|---|---|
@@ -117,6 +117,13 @@ Swagger UI GET /api/docs
 | | POST | `/books/{id}/bookmarks` | 登录 |
 | | PATCH | `/bookmarks/{id}` | 登录 |
 | | DELETE | `/bookmarks/{id}` | 登录 |
+| 书单 | GET | `/collections` | 登录 |
+| | POST | `/collections` | 登录 |
+| | GET | `/collections/{id}` | 登录（本人） |
+| | PATCH | `/collections/{id}` | 登录（本人） |
+| | DELETE | `/collections/{id}` | 登录（本人） |
+| | POST | `/collections/{id}/books` | 登录（本人） |
+| | DELETE | `/collections/{id}/books/{book_id}` | 登录（本人） |
 | 用户 | GET | `/users` | 管理员 |
 | | POST | `/users` | 管理员 |
 | | PATCH | `/users/{id}` | 管理员 |
@@ -188,7 +195,7 @@ sudo -u echoshelf /opt/echoshelf/bin/echoshelf admin create
 ```json
 { "username": "admin", "password": "******",
   "device": { "id": "android-abc123", "name": "Pixel 8", "platform": "android",
-              "app_version": "0.2.7", "os": "Android 14",
+              "app_version": "0.2.9", "os": "Android 14",
               "form_factor": "phone", "screen": "1080×2400 · 2.6x",
               "user_agent": "Mozilla/5.0 (Linux; Android 14; Pixel 8) …" } }
 ```
@@ -753,7 +760,60 @@ WebUI 已按此实现（`web/src/store/player.ts` 的 `syncFromServer()` +
 
 ---
 
-## 8. 用户管理 `/users`（仅管理员）
+## 8. 个人书单 `/collections`
+
+书单是当前登录用户的私有数据，接口只能操作自己的书单；书籍仍受书库权限和隐藏规则约束。
+
+### GET /collections
+
+`?book_id=123` 可选：额外返回每个书单是否包含这本书，用于详情页的「加入书单」勾选状态。
+
+```json
+{ "items": [
+  { "id": 1, "name": "睡前推理", "book_count": 2, "created_at": 1792800000,
+    "cover_url": "/api/v1/books/12/cover?size=thumb", "contains_book": true }
+] }
+```
+
+### POST /collections
+
+```json
+{ "name": "睡前推理" }
+```
+
+`201` → `CollectionOut`。同名返回 `409`，名称最长 64 字。
+
+### GET /collections/{id}
+
+`200` → `CollectionDetail`，在 `CollectionOut` 基础上增加 `books`（`BookOut[]`，按加入时间倒序）。
+
+### PATCH /collections/{id}
+
+```json
+{ "name": "新名字" }
+```
+
+`200` → `CollectionOut`。
+
+### DELETE /collections/{id}
+
+`204`。删除书单不会删除书籍。
+
+### POST /collections/{id}/books
+
+```json
+{ "book_id": 123 }
+```
+
+`200` → `CollectionOut`。重复加入幂等。
+
+### DELETE /collections/{id}/books/{book_id}
+
+`204`。书籍不在书单中也返回成功（幂等）。
+
+---
+
+## 9. 用户管理 `/users`（仅管理员）
 
 ### 角色与权限
 
@@ -816,7 +876,7 @@ WebUI 已按此实现（`web/src/store/player.ts` 的 `syncFromServer()` +
 `204`。该用户的进度、书签、设备、refresh token 随外键级联删除。
 同样受「不能删自己 / 不能删最后一个管理员」保护。
 
-## 9. 设备 `/devices`
+## 10. 设备 `/devices`
 
 设备在登录或注册时用客户端生成的 `device.id` 登记。`online` 的判定是三者同时成立：
 
@@ -834,7 +894,7 @@ WebUI 已按此实现（`web/src/store/player.ts` 的 `syncFromServer()` +
 
 ```json
 { "items": [ { "id": "web-dymrmm7k", "user_id": 1, "username": "demo",
-               "name": "Chrome 141", "platform": "web", "app_version": "0.2.7",
+               "name": "Chrome 141", "platform": "web", "app_version": "0.2.9",
                "os": "Android 14", "form_factor": "phone", "screen": "390×844 · 3x",
                "user_agent": "Mozilla/5.0 (Linux; Android 14; Pixel 8) … Chrome/141.0.0.0 Mobile Safari/537.36",
                "created_at": 1792852192, "last_seen_at": 1792872329,
@@ -900,12 +960,12 @@ WebUI 已按此实现（`web/src/store/player.ts` 的 `syncFromServer()` +
 - 设备下次登录会自动恢复（清空 `revoked_at`），是「踢下线」而不是永久封禁
 - 只能踢自己的设备；管理员可踢任意设备（用于「我的设备」页清理）
 
-## 10. 系统
+## 11. 系统
 
 ### GET /health（公开）
 
 ```json
-{ "status": "ok", "version": "0.2.7", "db": "ok", "ffmpeg": true,
+{ "status": "ok", "version": "0.2.9", "db": "ok", "ffmpeg": true,
   "libraries": 1, "books": 4, "uptime_sec": 505,
   "transcode": { "enabled": true, "active": 1, "completed": 12 } }
 ```
@@ -917,7 +977,7 @@ WebUI 已按此实现（`web/src/store/player.ts` 的 `syncFromServer()` +
 
 ---
 
-## 11. 数据模型
+## 12. 数据模型
 
 | 模型 | 字段 |
 |---|---|
@@ -944,7 +1004,7 @@ WebUI 已按此实现（`web/src/store/player.ts` 的 `syncFromServer()` +
 
 ---
 
-## 12. 未实现（规划中，**请勿依赖**）
+## 13. 未实现（规划中，**请勿依赖**）
 
 下列接口在早期设计文档里出现过，但**服务端尚未实现**，调用会得到 404 或 501：
 
@@ -952,13 +1012,13 @@ WebUI 已按此实现（`web/src/store/player.ts` 的 `syncFromServer()` +
 |---|---|---|
 | `GET /search?q=` | 未实现 | 用 `GET /books?q=`（模糊匹配书名/作者/系列） |
 | `/collections`（书单） | 未实现 | 用 `series` + `author` 归组；跨系列合集待做 |
-| ~~`/devices`（设备管理）~~ | **已实现**（见第 9 节） | 列表、改名、踢下线 |
+| ~~`/devices`（设备管理）~~ | **已实现**（见第 10 节） | 列表、改名、踢下线 |
 | `GET /books/{id}/download?track_ids=` | 未实现 | 用 `/chapters/{idx}/audio?download=1` 按集下载 |
 | ~~`stream?transcode=`~~ | **已实现**（见第 5 节） | 整轨转 opus/mp3 + 落盘缓存 |
 
 如果客户端需要其中某一项，先提需求再实现，不要按旧文档编码。
 
-## 13. 契约变更流程
+## 14. 契约变更流程
 
 1. 改代码同时更新本文件（含示例）；
 2. 破坏性变更必须提升 `APP_VERSION` 并在 CHANGELOG 标注；

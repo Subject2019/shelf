@@ -10,6 +10,9 @@ import type {
   Bookmark,
   BookmarkCreate,
   ChapterList,
+  CollectionDetail,
+  CollectionList,
+  CollectionSummary,
   Device,
   DeviceList,
   Health,
@@ -195,6 +198,42 @@ export const api = {
 
   deleteBookmark: (bookmarkId: number) =>
     request<void>(`/bookmarks/${bookmarkId}`, { method: "DELETE" }),
+
+  // ---- 个人书单 ----
+
+  collections: (bookId?: number) =>
+    request<CollectionList>(
+      `/collections${bookId ? `?book_id=${bookId}` : ""}`,
+    ),
+
+  createCollection: (name: string) =>
+    request<CollectionSummary>("/collections", {
+      method: "POST",
+      body: JSON.stringify({ name }),
+    }),
+
+  collectionDetail: (collectionId: number) =>
+    request<CollectionDetail>(`/collections/${collectionId}`),
+
+  updateCollection: (collectionId: number, name: string) =>
+    request<CollectionSummary>(`/collections/${collectionId}`, {
+      method: "PATCH",
+      body: JSON.stringify({ name }),
+    }),
+
+  deleteCollection: (collectionId: number) =>
+    request<void>(`/collections/${collectionId}`, { method: "DELETE" }),
+
+  addBookToCollection: (collectionId: number, bookId: number) =>
+    request<CollectionSummary>(`/collections/${collectionId}/books`, {
+      method: "POST",
+      body: JSON.stringify({ book_id: bookId }),
+    }),
+
+  removeBookFromCollection: (collectionId: number, bookId: number) =>
+    request<void>(`/collections/${collectionId}/books/${bookId}`, {
+      method: "DELETE",
+    }),
 
   // ---- 用户管理（管理员） ----
 

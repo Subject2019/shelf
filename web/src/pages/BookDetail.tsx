@@ -6,6 +6,7 @@ import { ApiError } from "../api/client";
 import { api } from "../api/endpoints";
 import type { BookDetail as BookDetailType, Chapter } from "../api/types";
 import MetadataEditor from "../components/book/MetadataEditor";
+import CollectionPicker from "../components/collections/CollectionPicker";
 import Cover from "../components/ui/Cover";
 import { Icon } from "../components/ui/Icon";
 import { formatClock, formatCount, formatDuration } from "../lib/format";
@@ -24,6 +25,7 @@ export default function BookDetail() {
   const isCurrent = currentBookId === id;
 
   const [editing, setEditing] = useState(false);
+  const [pickerOpen, setPickerOpen] = useState(false);
 
   const bookQuery = useQuery({
     queryKey: ["book", id],
@@ -226,6 +228,16 @@ export default function BookDetail() {
                 ? `继续收听 · ${formatClock(progress.position_sec)}`
                 : "开始播放"}
             </button>
+            {!book.is_missing && (
+              <button
+                type="button"
+                onClick={() => setPickerOpen(true)}
+                className="inline-flex items-center gap-1.5 rounded-full border border-zinc-300 px-4 py-2.5 text-sm text-zinc-700 transition hover:border-brand-500/40 hover:text-brand-500 dark:border-white/10 dark:text-zinc-300"
+              >
+                <Icon name="booklist" className="size-4" />
+                加入书单
+              </button>
+            )}
             {percent > 0 && (
               <span className="text-xs text-zinc-500">已听 {percent.toFixed(0)}%</span>
             )}
@@ -293,6 +305,10 @@ export default function BookDetail() {
           currentPosition={isCurrent ? undefined : progress?.position_sec}
           onPick={(chapter) => play(chapter.start_sec)}
         />
+      )}
+
+      {pickerOpen && (
+        <CollectionPicker bookId={book.id} onClose={() => setPickerOpen(false)} />
       )}
 
       {editing && (

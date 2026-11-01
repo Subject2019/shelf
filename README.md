@@ -102,6 +102,7 @@ shelf 是一个面向 NAS 的自托管有声书服务器。把有声书目录挂
 
 - FTS5 全文搜索（书名 / 副标题 / 作者 / 演播者 / 系列 / 简介），中文短词回退 LIKE
 - 作者视图、系列分组
+- 个人书单：自定义专题 / 待听清单，详情页一键加入或移出
 - 收听统计：今日 / 累计 / 连续天数 / 近 7 天
 
 ### 多用户与安全
@@ -114,7 +115,7 @@ shelf 是一个面向 NAS 的自托管有声书服务器。把有声书目录挂
 ### 客户端
 
 - WebUI 响应式布局，浏览器直接使用（未内置 service worker，暂不等同完整 PWA）
-- Android 壳（`android-pwa/`，包名 `com.shelf.pwa`，当前 0.2.7）：WebView 复用 WebUI，原生 Media3 负责后台播放；状态栏/锁屏提供上一集、快退 15 秒、播放/暂停、快进 15 秒、下一集、封面和当前单集进度条；进度由原生服务每 15 秒直报，划掉后台也会继续同步
+- Android 壳（`android-pwa/`，包名 `com.shelf.pwa`，当前 0.2.9）：WebView 复用 WebUI，原生 Media3 负责后台播放；状态栏/锁屏提供上一集、快退 15 秒、播放/暂停、快进 15 秒、下一集、封面和当前单集进度条；进度由原生服务每 15 秒直报，划掉后台也会继续同步
 - 原生播放依赖服务端 WebUI 中的 `ShelfPlayer` 适配层；升级 APK 或前端后请保持两端一致，否则会回退到 WebView `<audio>`，状态栏不显示媒体卡片
 - 原生 Compose 版（`android/`）为早期实验，已搁置；其 Media3 播放服务已被 WebView 壳复用
 
@@ -333,11 +334,11 @@ shelf/
 按钮顺序由 App 固定为上一集、快退、播放/暂停、快进、下一集；进度条已对系统暴露，具体间距、分组和进度条样式由手机 ROM 的系统媒体卡片决定，部分 ROM 可能无法完全等分。
 
 **Android 划掉后台后进度少一段？**
-确认使用 0.2.7+ APK，并且服务端 `web/dist` 已更新：网页需要把 `bookId/baseUrl/token/deviceId` 注入原生服务，旧前端不会触发原生直报。可用 `adb logcat -s ShelfProgress` 查看上报结果；如果是 HTTP 401，等网页刷新 token 后会自动补传。
+确认使用 0.2.9+ APK，并且服务端 `web/dist` 已更新：网页需要把 `bookId/baseUrl/token/deviceId` 注入原生服务，旧前端不会触发原生直报。可用 `adb logcat -s ShelfProgress` 查看上报结果；如果是 HTTP 401，等网页刷新 token 后会自动补传。
 
 ## 路线图
 
-Web 端与 Android 壳的核心链路已完成（Android 壳 0.2.7）；后续主要是发布、兼容性打磨与离线能力。详见 [`docs/ROADMAP.md`](./docs/ROADMAP.md)。
+Web 端与 Android 壳的核心链路已完成（Android 壳 0.2.9）；后续主要是发布、兼容性打磨与离线能力。详见 [`docs/ROADMAP.md`](./docs/ROADMAP.md)。
 
 ## 许可证与作者
 

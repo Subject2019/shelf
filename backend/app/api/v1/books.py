@@ -24,6 +24,7 @@ from app.core.security import create_stream_token, get_current_user
 from app.db.base import now_ts
 from app.db.session import get_db
 from app.models import Book, Chapter, MediaFile, Progress, Track, User
+from app.services.book_dto import book_out
 from app.services.search import search_plan
 from app.services.covers import (
     MAX_UPLOAD_BYTES,
@@ -41,7 +42,6 @@ from app.schemas.book import (
     ChapterList,
     ChapterOut,
     PlayTokenOut,
-    ProgressBrief,
     SeriesList,
     SeriesOut,
     TrackOut,
@@ -80,48 +80,6 @@ _IMAGE_TYPES = {
 
 def _progress_join(user_id: int):
     return and_(Progress.book_id == Book.id, Progress.user_id == user_id)
-
-
-def _progress_brief(book: Book, progress: Progress | None) -> ProgressBrief | None:
-    if progress is None:
-        return None
-    percent = (
-        0.0
-        if book.total_duration_sec <= 0
-        else min(100.0, progress.position_sec / book.total_duration_sec * 100)
-    )
-    return ProgressBrief(
-        position_sec=progress.position_sec,
-        percent=round(percent, 2),
-        is_finished=progress.is_finished,
-    )
-
-
-def _book_out(book: Book, progress: Progress | None) -> BookOut:
-    return BookOut(
-        id=book.id,
-        library_id=book.library_id,
-        title=book.title,
-        author=book.author,
-        narrator=book.narrator,
-        series_name=book.series_name,
-        series_index=book.series_index,
-        language=book.language,
-        cover_url=(
-            f"/api/v1/books/{book.id}/cover?size=thumb" if book.cover_path else None
-        ),
-        manual_override=book.manual_override,
-        cover_uploaded_by=book.cover_uploaded_by,
-        hidden=book.hidden,
-        total_duration_sec=book.total_duration_sec,
-        intro_sec=book.intro_sec or 0.0,
-        outro_sec=book.outro_sec or 0.0,
-        track_count=book.track_count,
-        size_bytes=book.size_bytes,
-        chapter_source=book.chapter_source,
-        added_at=book.added_at,
-        progress=_progress_brief(book, progress),
-    )
 
 
 def _order_by(sort: str):
@@ -366,7 +324,7 @@ def list_books(
     ).all()
 
     return BookList(
-        items=[_book_out(book, progress) for book, progress in rows],
+        items=[book_out(book, progress) for book, progress in rows],
         total=total,
         page=page,
         page_size=page_size,
@@ -425,7 +383,7 @@ def get_book(
             Progress.user_id == current_user.id, Progress.book_id == book.id
         )
     )
-    base = _book_out(book, progress)
+    base = book_out(book, progress)
     return BookDetail(
         **base.model_dump(),
         subtitle=book.subtitle,
@@ -494,7 +452,7 @@ def update_book(
             Progress.user_id == editor.id, Progress.book_id == book.id
         )
     )
-    return _book_out(book, progress)
+    return book_out(book, progress)
 
 
 @router.post("/books/{book_id}/metadata/reset", response_model=BookOut)
@@ -515,7 +473,7 @@ def reset_metadata(
             Progress.user_id == editor.id, Progress.book_id == book.id
         )
     )
-    return _book_out(book, progress)
+    return book_out(book, progress)
 
 
 @router.put("/books/{book_id}/cover", response_model=BookOut)
@@ -549,7 +507,7 @@ async def upload_cover(
             Progress.user_id == editor.id, Progress.book_id == book.id
         )
     )
-    return _book_out(book, progress)
+    return book_out(book, progress)
 
 
 @router.delete("/books/{book_id}/cover", response_model=BookOut)
@@ -574,7 +532,7 @@ def delete_cover(
             Progress.user_id == editor.id, Progress.book_id == book.id
         )
     )
-    return _book_out(book, progress)
+    return book_out(book, progress)
 
 
 @router.get("/books/{book_id}/chapters", response_model=ChapterList)

@@ -12,7 +12,7 @@ from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 APP_NAME = "shelf"
-APP_VERSION = "0.2.8"
+APP_VERSION = "0.2.9"
 APP_AUTHOR = "subject"
 
 # 源码布局下指向项目根；容器内 /app/app/core/config.py 解析为 /，即 /data 与 /audiobooks。
