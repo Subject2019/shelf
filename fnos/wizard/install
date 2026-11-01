@@ -8,6 +8,13 @@
       },
       {
         "type": "text",
+        "field": "wizard_media_path",
+        "label": "有声书目录（可选）",
+        "initValue": "",
+        "helpText": "留空使用声架共享目录 shelf/media；也可以填写飞牛上已有有声书目录的绝对路径，例如 /vol1/1000/媒体/有声书。"
+      },
+      {
+        "type": "text",
         "field": "wizard_admin_username",
         "label": "管理员用户名",
         "initValue": "admin",

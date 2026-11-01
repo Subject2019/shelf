@@ -4,7 +4,7 @@
 
 - 应用名：`shelf`
 - 显示名称：**声架**
-- 版本：`0.2.7`
+- 应用包版本：`0.2.7-1`（运行镜像仍为 `0.2.7`）
 - 架构：`x86`（当前镜像只有 `linux/amd64`）
 - 容器名：`shelf-fnos`
 - 默认端口：`8080`
@@ -47,26 +47,47 @@ fnpack build
 
 在飞牛应用中心手动安装 `shelf.fpk`，安装向导会要求填写：
 
-1. 管理员用户名；
-2. 管理员密码（至少 8 位）；
-3. 是否启用服务端转码。
+1. **有声书目录（可选）**：留空使用共享目录 `shelf/media`，也可以填写已有目录的绝对路径；
+2. 管理员用户名；
+3. 管理员密码（至少 8 位）；
+4. 是否启用服务端转码。
 
 安装完成后打开「声架」入口，地址由飞牛应用入口代理到容器 `8080` 端口。
 
+如果安装仍然失败，先查看：
+
+```text
+${TRIM_PKGVAR}/install.log
+```
+
+或飞牛应用中心对应应用的安装日志。`0.2.7-1` 已把安装阶段可能失败的凭据检查移出 `install_init`。
+
 ## 媒体目录
 
-本工程使用飞牛的数据共享目录，而不是让用户直接填写任意宿主机路径：
+安装向导提供两种方式：
+
+### 方式一：使用声架共享目录（留空即可）
 
 ```text
 应用文件 → shelf → media
 ```
 
-在飞牛文件管理器中把有声书放入该目录后，声架会扫描 `/audiobooks`。
+把有声书放入该目录后，声架会扫描 `/audiobooks`。
 
-对应容器挂载：
+### 方式二：使用已有目录
+
+在「有声书目录」中填写飞牛上的绝对路径，例如：
 
 ```text
-${TRIM_DATA_SHARE_PATHS}:/audiobooks:ro
+/vol1/1000/媒体/有声书
+```
+
+该目录会以只读方式挂载到容器 `/audiobooks`。
+
+> 当前飞牛向导只提供文本路径输入，不是原生的文件夹选择器。请确认目录已经存在，并且应用用户有读取权限；如有需要，也可以在安装后的应用设置里给声架授权该目录。对应 Compose 表达式为：
+
+```text
+${wizard_media_path:-${TRIM_DATA_SHARE_PATHS:-${TRIM_PKGVAR}/media}}:/audiobooks:ro
 ```
 
 媒体目录以只读方式挂载，声架不会修改原始音频文件。
@@ -76,10 +97,9 @@ ${TRIM_DATA_SHARE_PATHS}:/audiobooks:ro
 | 内容 | 位置 |
 |---|---|
 | SQLite 数据库、缓存 | `${TRIM_PKGVAR}/data` |
-| 管理员密码 | `${TRIM_PKGETC}/admin_password` |
-| 运行配置 | `${TRIM_PKGETC}/shelf.env` |
+| 安装日志 | `${TRIM_PKGVAR}/install.log` |
 
-管理员密码通过 Docker secret 方式以文件挂载进容器，不写入 Compose 环境变量。
+管理员用户名和密码由安装向导的 `wizard_admin_username` / `wizard_admin_password` 直接注入 Compose 环境变量。密码不会写入安装目录文件，但会存在于容器环境变量中，请自行评估宿主权限。
 
 ## 与现有 Docker 部署的关系
 
@@ -91,17 +111,23 @@ ${TRIM_DATA_SHARE_PATHS}:/audiobooks:ro
 
 - 当前镜像为 `linux/amd64`，因此 `manifest` 只声明 `platform=x86`；ARM 飞牛设备需要先构建多架构镜像。
 - 如果飞牛设备上 `8080` 已被占用，需要在 `manifest`、`app/ui/config` 和 Compose 中同步修改端口。
-- 首个版本固定使用飞牛数据共享目录 `shelf/media`，暂不支持在安装向导里直接选择任意宿主机目录。
-- 升级时会保留 `${TRIM_PKGVAR}` 和 `${TRIM_PKGETC}`；卸载时默认不删除数据，具体以飞牛应用中心提示为准。
-- 应用内的管理员密码修改仍通过声架 WebUI 完成；重新安装向导只负责首次管理员创建。
+- 安装向导的媒体目录是文本路径，不是原生目录选择器；路径不存在时不会阻止安装，但会导致书库为空。
+- 升级时会保留 `${TRIM_PKGVAR}`；卸载时默认不删除数据，具体以飞牛应用中心提示为准。
+- 应用内的管理员密码修改仍通过声架 WebUI 完成；安装向导只负责首次管理员创建。
+- `0.2.7-1` 的安装脚本不再在 `install_init` 阶段读取密码，避免部分 fnOS 版本下因拿不到向导变量而报“执行脚本出错且原因未知”。
 
 ## 版本同步
 
-发布新镜像时，需要同时修改：
+发布新镜像时，修改：
 
 ```text
-fnos/manifest
 fnos/app/docker/docker-compose.yaml
 ```
 
-确保 `manifest.version`、Compose 镜像 tag 和服务端版本一致。
+如果应用包本身也有变更，再修改：
+
+```text
+fnos/manifest
+```
+
+`manifest.version` 是 fpk 版本，可以和运行镜像版本不同（当前 fpk 为 `0.2.7-1`，镜像为 `0.2.7`）。

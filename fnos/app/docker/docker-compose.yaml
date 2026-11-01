@@ -6,20 +6,19 @@ services:
     stop_grace_period: 30s
     ports:
       - "${TRIM_SERVICE_PORT:-8080}:8080"
-    env_file:
-      - "${TRIM_PKGETC}/shelf.env"
     environment:
       TZ: Asia/Shanghai
       ECHOSHELF_DATA_PATH: /data
       ECHOSHELF_AUDIOBOOKS_PATH: /audiobooks
-      ECHOSHELF_ADMIN_PASSWORD_FILE: /run/secrets/shelf_admin_password
+      ECHOSHELF_ADMIN_USERNAME: "${wizard_admin_username:-admin}"
+      ECHOSHELF_ADMIN_PASSWORD: "${wizard_admin_password:-}"
+      ECHOSHELF_ENABLE_TRANSCODE: "${wizard_enable_transcode:-true}"
       ECHOSHELF_ALLOW_REGISTRATION: "false"
       PUID: "${TRIM_UID:-1000}"
       PGID: "${TRIM_GID:-1000}"
     volumes:
       - "${TRIM_PKGVAR}/data:/data"
-      - "${TRIM_DATA_SHARE_PATHS:-${TRIM_PKGVAR}/media}:/audiobooks:ro"
-      - "${TRIM_PKGETC}/admin_password:/run/secrets/shelf_admin_password:ro"
+      - "${wizard_media_path:-${TRIM_DATA_SHARE_PATHS:-${TRIM_PKGVAR}/media}}:/audiobooks:ro"
     security_opt:
       - no-new-privileges:true
     healthcheck:

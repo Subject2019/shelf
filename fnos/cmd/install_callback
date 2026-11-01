@@ -1,24 +1,28 @@
 #!/bin/bash
-set -euo pipefail
+set -u
 
 log() {
     printf '%s\n' "$*" >&2
-    if [[ -n "${TRIM_TEMP_LOGFILE:-}" ]]; then
-        printf '%s\n' "$*" >> "$TRIM_TEMP_LOGFILE"
+}
+
+# 应用数据目录；${TRIM_PKGVAR}/data 由容器实际使用。
+if [ -n "${TRIM_PKGVAR:-}" ]; then
+    mkdir -p "$TRIM_PKGVAR/data" "$TRIM_PKGVAR/media" 2>/dev/null || true
+    {
+        printf '%s install_callback: data dirs ready\n' "$(date '+%Y-%m-%d %H:%M:%S')"
+        printf 'status=%s\n' "${TRIM_APP_STATUS:-unknown}"
+        printf 'appdest=%s\n' "${TRIM_APPDEST:-}"
+        printf 'pkgetc=%s\n' "${TRIM_PKGETC:-}"
+        printf 'pkgvar=%s\n' "${TRIM_PKGVAR:-}"
+        printf 'media_path=%s\n' "${wizard_media_path:-<share>}"
+    } >> "$TRIM_PKGVAR/install.log" 2>/dev/null || true
+fi
+
+# 自定义媒体目录只做提示，不在安装阶段失败；Compose 会按 wizard_media_path 挂载。
+if [ -n "${wizard_media_path:-}" ]; then
+    if [ ! -d "$wizard_media_path" ]; then
+        log "提示：媒体目录 $wizard_media_path 当前不存在，安装完成后请检查路径。"
     fi
-}
+fi
 
-fail() {
-    log "声架安装失败：$*"
-    exit 1
-}
-
-[[ -f "$TRIM_PKGETC/shelf.env" ]] || fail "缺少 $TRIM_PKGETC/shelf.env"
-[[ -f "$TRIM_PKGETC/admin_password" ]] || fail "缺少管理员密码文件"
-
-mkdir -p "$TRIM_PKGVAR/data"
-# 未创建数据共享目录时使用的回退媒体目录。
-mkdir -p "$TRIM_PKGVAR/media"
-
-log "声架数据目录已就绪"
 exit 0

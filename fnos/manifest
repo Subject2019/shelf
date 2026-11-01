@@ -1,5 +1,5 @@
 appname               = shelf
-version               = 0.2.7
+version               = 0.2.7-1
 display_name          = 声架
 desc                  = 自托管有声书服务器。把有声书放进 NAS，打开浏览器或 Android App 就能听。
 platform              = x86
@@ -15,6 +15,6 @@ desktop_applaunchname = shelf.main
 service_port          = 8080
 checkport             = true
 ctl_stop              = true
-disable_authorization_path = true
+disable_authorization_path = false
 
-changelog             = 首个飞牛应用版本：单容器部署声架 0.2.7，支持书库扫描、多格式播放、多端进度同步和 Android 原生后台播放。
+changelog             = 修复安装脚本在部分 fnOS 版本下取不到向导变量导致中断的问题；安装时可填写已有有声书目录，留空则使用共享目录 shelf/media。
