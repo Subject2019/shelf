@@ -14,6 +14,7 @@ if [ -n "${TRIM_PKGVAR:-}" ]; then
         printf 'appdest=%s\n' "${TRIM_APPDEST:-}"
         printf 'pkgetc=%s\n' "${TRIM_PKGETC:-}"
         printf 'pkgvar=%s\n' "${TRIM_PKGVAR:-}"
+        printf 'port=%s\n' "${wizard_port:-8080}"
         printf 'media_path=%s\n' "${wizard_media_path:-<share>}"
     } >> "$TRIM_PKGVAR/install.log" 2>/dev/null || true
 fi
