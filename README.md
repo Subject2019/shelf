@@ -6,6 +6,7 @@
   <img alt="android" src="https://img.shields.io/badge/Android-0.2.9-3DDC84?style=flat-square&logo=android&logoColor=white" />
   <img alt="fnos" src="https://img.shields.io/badge/fnOS-0.2.9--1-1F7A5A?style=flat-square" />
   <a href="https://github.com/Subject2019/shelf/stargazers"><img alt="stars" src="https://img.shields.io/github/stars/Subject2019/shelf?style=flat-square" /></a>
+  <a href="./LICENSE"><img alt="license" src="https://img.shields.io/badge/license-MIT-2ea44f?style=flat-square" /></a>
 </p>
 
 > 自托管有声书服务器 · 原 EchoShelf · 声架
@@ -349,6 +350,7 @@ shelf/
 ├── docs/                    架构 / 接口 / 数据模型 / 部署文档
 ├── data/                    运行时数据（git 忽略）
 ├── release/                 发布产物（git 忽略）
+├── LICENSE                  MIT 许可证
 └── README.md
 ```
 
@@ -412,9 +414,11 @@ Web 端与 Android 壳的核心链路已完成（Android 壳 0.2.9）；后续�
 
 ## 许可证
 
+本项目采用 [MIT License](./LICENSE) 开源。
+
 - 作者：**subject**
 - 开发：**subject** 与 AI 共同开发
 - 版权：Copyright © 2026 subject
 - 源码：<https://github.com/Subject2019/shelf>
 
-当前仓库尚未附带正式的开源 `LICENSE` 文件。在补充许可证之前，源码虽已公开，但默认保留所有权利；如需复制、修改、分发或商用，请先联系作者确认授权。
+你可以自由使用、修改、分发和商用本项目，但需保留版权声明和许可证文本。软件按“原样”提供，不附带任何明示或暗示的担保。

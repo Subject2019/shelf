@@ -3,6 +3,7 @@
   "private": true,
   "version": "0.2.9",
   "author": "subject",
+  "license": "MIT",
   "type": "module",
   "scripts": {
     "dev": "vite --host 0.0.0.0 --port 5173",
