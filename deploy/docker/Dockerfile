@@ -26,7 +26,10 @@ FROM python:3.11-alpine AS runtime
 
 LABEL org.opencontainers.image.title="shelf" \
       org.opencontainers.image.description="自托管有声书服务器" \
-      org.opencontainers.image.authors="subject"
+      org.opencontainers.image.authors="subject" \
+      org.opencontainers.image.source="https://github.com/Subject2019/shelf" \
+      org.opencontainers.image.url="https://github.com/Subject2019/shelf" \
+      org.opencontainers.image.documentation="https://github.com/Subject2019/shelf#readme"
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \

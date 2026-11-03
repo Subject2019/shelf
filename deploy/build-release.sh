@@ -130,6 +130,8 @@ if [[ "$BUILD_DOCKER" = "1" ]]; then
     fi
     log "构建镜像 shelf:$VERSION（缓存不在系统盘）"
     docker buildx build --builder shelf-builder \
+        --label "org.opencontainers.image.source=https://github.com/Subject2019/shelf" \
+        --label "org.opencontainers.image.url=https://github.com/Subject2019/shelf" \
         -f "$ROOT/deploy/docker/Dockerfile" \
         -t "shelf:$VERSION" -t "shelf:latest" --load "$ROOT"
 
