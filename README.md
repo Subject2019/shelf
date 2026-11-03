@@ -1,9 +1,19 @@
-# shelf
+# 声架 shelf
+
+<p align="center">
+  <a href="https://github.com/Subject2019/shelf/releases/latest"><img alt="release" src="https://img.shields.io/github/v/release/Subject2019/shelf?style=flat-square&label=release" /></a>
+  <a href="https://github.com/users/Subject2019/packages/container/shelf"><img alt="docker" src="https://img.shields.io/badge/GHCR-ghcr.io%2Fsubject2019%2Fshelf-2496ED?style=flat-square&logo=docker&logoColor=white" /></a>
+  <img alt="android" src="https://img.shields.io/badge/Android-0.2.9-3DDC84?style=flat-square&logo=android&logoColor=white" />
+  <img alt="fnos" src="https://img.shields.io/badge/fnOS-0.2.9--1-1F7A5A?style=flat-square" />
+  <a href="https://github.com/Subject2019/shelf/stargazers"><img alt="stars" src="https://img.shields.io/github/stars/Subject2019/shelf?style=flat-square" /></a>
+</p>
 
 > 自托管有声书服务器 · 原 EchoShelf · 声架
 
-在 NAS 上用 Docker 跑一个容器，用浏览器或安卓 App 听书，进度多端互通。轻量、单容器、SQLite，不需要 Postgres / Redis。
+在 NAS 上用 Docker 跑一个容器，用浏览器、安卓 App 或飞牛客户端听书，进度多端互通。轻量、单容器、SQLite，不需要 Postgres / Redis。
 
+> **项目已开源**：源码托管在 [Subject2019/shelf](https://github.com/Subject2019/shelf)。Docker 一键部署仓库见 [Subject2019/shelf-docker](https://github.com/Subject2019/shelf-docker)。
+>
 > **开发说明**：本项目由 **subject** 与 AI 共同开发。需求定义、验收与部署由 subject 负责，代码、文档与测试在 AI 辅助下完成；使用前请自行评估与测试。
 
 ---
@@ -16,7 +26,7 @@
 - [功能特性](#功能特性)
 - [技术栈](#技术栈)
 - [架构概览](#架构概览)
-- [快速开始](#快速开始)
+- [下载与安装](#下载与安装)
 - [配置项](#配置项)
 - [数据与目录](#数据与目录)
 - [API](#api)
@@ -24,7 +34,8 @@
 - [文档](#文档)
 - [常见问题](#常见问题)
 - [路线图](#路线图)
-- [许可证与作者](#许可证与作者)
+- [参与贡献](#参与贡献)
+- [许可证](#许可证)
 
 ## 简介
 
@@ -137,13 +148,35 @@ shelf 是一个面向 NAS 的自托管有声书服务器。把有声书目录挂
 
 更完整的架构与数据流见 [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md)。
 
-## 快速开始
+## 下载与安装
 
-> 一键部署/升级/卸载请使用公开部署仓库：[Subject2019/shelf-docker](https://github.com/Subject2019/shelf-docker)。
+三种安装形态，按你的设备选择：
+
+| 安装包 | 适用场景 | 获取方式 |
+|---|---|---|
+| **Android APK** | 手机上听书，连接已有 shelf 服务端 | [下载 `shelf-0.2.9.apk`](https://github.com/Subject2019/shelf/releases/download/v0.2.9/shelf-0.2.9.apk) |
+| **飞牛 fnOS fpk** | 飞牛 NAS 一键安装，包含服务端 | [下载 `shelf-0.2.9-fnos.fpk`](https://github.com/Subject2019/shelf/releases/download/v0.2.9/shelf-0.2.9-fnos.fpk) |
+| **Docker 镜像** | 群晖 / 威联通 / Unraid / Linux 等 | `ghcr.io/subject2019/shelf:0.2.9`，见下方 Docker 章节 |
+
+> Android APK 只是客户端，需要连接一个正在运行的 shelf 服务端；飞牛 fpk 和 Docker 镜像都包含服务端。
 >
-> 容器镜像：[ghcr.io/subject2019/shelf](https://github.com/users/Subject2019/packages/container/shelf)。
+> 一键部署 / 升级 / 卸载脚本和 compose 配置在 [Subject2019/shelf-docker](https://github.com/Subject2019/shelf-docker)。
+>
+> 容器镜像页面：[ghcr.io/subject2019/shelf](https://github.com/users/Subject2019/packages/container/shelf)。
 
-### 方式一：Docker（推荐）
+### Docker 镜像（服务端）
+
+#### 一键部署（推荐）
+
+```bash
+git clone --depth 1 https://github.com/Subject2019/shelf-docker.git
+cd shelf-docker
+bash install.sh
+```
+
+安装脚本会询问媒体目录、数据目录、管理员账号和端口，并自动生成 `.env`、启动容器。
+
+#### 直接运行
 
 ```bash
 docker run -d --name shelf \
@@ -160,7 +193,7 @@ docker run -d --name shelf \
 
 > 数据目录必须放在本地盘，不要用 SMB / NFS；媒体目录以只读方式挂载。
 
-### 方式二：docker compose
+#### 使用 docker compose
 
 ```yaml
 services:
@@ -184,7 +217,7 @@ services:
 docker compose up -d
 ```
 
-### 方式三：本地开发
+### 本地开发
 
 ```bash
 # 后端
@@ -208,6 +241,10 @@ docker build -f deploy/docker/Dockerfile -t shelf:latest .
 ```
 
 ### Android 客户端（android-pwa）
+
+<p>
+  <a href="https://github.com/Subject2019/shelf/releases/download/v0.2.9/shelf-0.2.9.apk"><img alt="下载 Android APK" src="https://img.shields.io/badge/下载-Android%200.2.9-3DDC84?style=for-the-badge&logo=android&logoColor=white" /></a>
+</p>
 
 WebView 壳不内置网页：启动后从服务器加载 WebUI，音频播放由原生 Media3 前台服务接管。完整说明见 [`android-pwa/README.md`](./android-pwa/README.md)。
 
@@ -236,6 +273,23 @@ cd android-pwa
 - 系统媒体卡片不支持音量滑杆，音量使用 App 内音量条或手机音量键。
 
 > **前端必须同步更新**：壳只提供原生桥，网页不调用 `ShelfPlayer` 时仍走 WebView `<audio>`。生产环境更新 APK 后，需要重新构建并部署 `web/`（Docker 镜像或静态 `dist`）。
+
+### 飞牛 fnOS（fpk）
+
+<p>
+  <a href="https://github.com/Subject2019/shelf/releases/download/v0.2.9/shelf-0.2.9-fnos.fpk"><img alt="下载飞牛 fpk" src="https://img.shields.io/badge/下载-飞牛%20fnOS%200.2.9--1-1F7A5A?style=for-the-badge" /></a>
+</p>
+
+`fpk` 是飞牛 NAS 的应用安装包，内置服务端镜像，不要求用户自己写 Compose。
+
+安装步骤：
+
+1. 在飞牛应用中心选择「手动安装」，上传 `shelf-0.2.9-fnos.fpk`；
+2. 安装向导填写访问端口、管理员账号密码和是否启用转码；
+3. 有声书目录可留空使用共享目录 `shelf/media`，也可以填写飞牛上的已有目录；
+4. 安装完成后从桌面「声架」入口打开，进入「设置 → 书库」确认路径为容器内 `/audiobooks`。
+
+详细说明、目录结构和构建方式见 [`fnos/README.md`](./fnos/README.md)。
 
 ## 配置项
 
@@ -270,8 +324,8 @@ cd android-pwa
 
 后端为 FastAPI，接口前缀 `/api/v1`，自动生成 OpenAPI 文档：
 
-- Swagger UI：`http://<host>:8080/docs`
-- OpenAPI JSON：`http://<host>:8080/openapi.json`
+- Swagger UI：`http://<host>:8080/api/docs`
+- OpenAPI JSON：`http://<host>:8080/api/openapi.json`
 
 完整接口参考见 [`docs/API.md`](./docs/API.md)。
 
@@ -286,13 +340,15 @@ shelf/
 │   ├── app/src/main/java/com/shelf/pwa/player/    Media3 服务 / 控制器
 │   └── README.md                                  构建、连接与通知说明
 ├── android/                 原生 Compose 版（实验，已搁置）
+├── fnos/                    飞牛 fnOS 应用工程（fpk / Compose / 安装向导）
 ├── deploy/
 │   ├── docker/              Dockerfile / entrypoint / compose
 │   ├── bare/                systemd 常规部署
-│   └── scripts/             backup / restore / healthcheck
+│   ├── scripts/             backup / restore / healthcheck
+│   └── shelf-docker/        公开部署仓库（独立 git 仓库）
 ├── docs/                    架构 / 接口 / 数据模型 / 部署文档
 ├── data/                    运行时数据（git 忽略）
-├── release/                 分发包输出（git 忽略）
+├── release/                 发布产物（git 忽略）
 └── README.md
 ```
 
@@ -306,7 +362,9 @@ shelf/
 | [docs/AUDIO_FORMATS.md](./docs/AUDIO_FORMATS.md) | 音频格式 / 章节 / CUE 支持矩阵 |
 | [docs/CLIENT_DOWNLOAD.md](./docs/CLIENT_DOWNLOAD.md) | 客户端按章节下载约定 |
 | [android-pwa/README.md](./android-pwa/README.md) | Android 壳构建、连接与通知说明 |
+| [fnos/README.md](./fnos/README.md) | 飞牛 fnOS 应用包构建、安装与目录说明 |
 | [docs/DEPLOY_NAS.md](./docs/DEPLOY_NAS.md) | NAS 部署与运维 |
+| [Subject2019/shelf-docker](https://github.com/Subject2019/shelf-docker) | 公开 Docker 部署仓库 / 一键脚本 / APK Release |
 | [docs/ROADMAP.md](./docs/ROADMAP.md) | 里程碑与任务拆解 |
 | [docs/ADR/](./docs/ADR/) | 架构决策记录 |
 
@@ -340,9 +398,23 @@ shelf/
 
 Web 端与 Android 壳的核心链路已完成（Android 壳 0.2.9）；后续主要是发布、兼容性打磨与离线能力。详见 [`docs/ROADMAP.md`](./docs/ROADMAP.md)。
 
-## 许可证与作者
+## 参与贡献
+
+欢迎提交 Issue 和 Pull Request：
+
+- 使用问题、功能建议：优先到 [Issues](https://github.com/Subject2019/shelf/issues) 搜索或新建；
+- 提交代码前，后端运行 `cd backend && .venv/bin/python -m pytest -q`；
+- 前端运行 `cd web && npm run build`，确保 TypeScript 和 Vite 构建通过；
+- Android 修改后运行 `cd android-pwa && ./gradlew assembleRelease`；
+- 不要提交数据库、媒体文件、`secret.key`、签名密钥或真实环境配置。
+
+如果这个项目对你有帮助，欢迎给主项目点一个 Star。
+
+## 许可证
 
 - 作者：**subject**
 - 开发：**subject** 与 AI 共同开发
 - 版权：Copyright © 2026 subject
-- 许可证：仓库暂未附带 `LICENSE` 文件；如需开源分发，请先补充许可证。
+- 源码：<https://github.com/Subject2019/shelf>
+
+当前仓库尚未附带正式的开源 `LICENSE` 文件。在补充许可证之前，源码虽已公开，但默认保留所有权利；如需复制、修改、分发或商用，请先联系作者确认授权。
