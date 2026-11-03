@@ -6,14 +6,14 @@
   <img alt="android" src="https://img.shields.io/badge/Android-0.2.9-3DDC84?style=flat-square&logo=android&logoColor=white" />
   <img alt="fnos" src="https://img.shields.io/badge/fnOS-0.2.9--1-1F7A5A?style=flat-square" />
   <a href="https://github.com/Subject2019/shelf/stargazers"><img alt="stars" src="https://img.shields.io/github/stars/Subject2019/shelf?style=flat-square" /></a>
-  <a href="./LICENSE"><img alt="license" src="https://img.shields.io/badge/license-PolyForm%20Noncommercial%201.0.0-2ea44f?style=flat-square" /></a>
+  <a href="./LICENSE"><img alt="license" src="https://img.shields.io/badge/license-MIT-2ea44f?style=flat-square" /></a>
 </p>
 
 > 自托管有声书服务器 · 原 EchoShelf · 声架
 
 在 NAS 上用 Docker 跑一个容器，用浏览器、安卓 App 或飞牛客户端听书，进度多端互通。轻量、单容器、SQLite，不需要 Postgres / Redis。
 
-> **源码已公开（非商业许可）**：源码托管在 [Subject2019/shelf](https://github.com/Subject2019/shelf)。Docker 一键部署仓库见 [Subject2019/shelf-docker](https://github.com/Subject2019/shelf-docker)。
+> **项目已开源**：源码托管在 [Subject2019/shelf](https://github.com/Subject2019/shelf)。Docker 一键部署仓库见 [Subject2019/shelf-docker](https://github.com/Subject2019/shelf-docker)。
 >
 > **开发说明**：本项目由 **subject** 与 AI 共同开发。需求定义、验收与部署由 subject 负责，代码、文档与测试在 AI 辅助下完成；使用前请自行评估与测试。
 
@@ -350,7 +350,7 @@ shelf/
 ├── docs/                    架构 / 接口 / 数据模型 / 部署文档
 ├── data/                    运行时数据（git 忽略）
 ├── release/                 发布产物（git 忽略）
-├── LICENSE                  PolyForm Noncommercial 1.0.0 许可证
+├── LICENSE                  MIT 许可证
 └── README.md
 ```
 
@@ -414,15 +414,11 @@ Web 端与 Android 壳的核心链路已完成（Android 壳 0.2.9）；后续�
 
 ## 许可证
 
-本项目采用 [PolyForm Noncommercial License 1.0.0](./LICENSE)（非商业许可）。
+本项目采用 [MIT License](./LICENSE) 开源。
 
 - 作者：**subject**
 - 开发：**subject** 与 AI 共同开发
 - 版权：Copyright © 2026 subject
 - 源码：<https://github.com/Subject2019/shelf>
 
-允许个人学习、研究、实验、业余项目，以及慈善、教育、公共研究、公共安全/卫生、环保和政府机构等非商业用途。
-
-未经作者书面授权，不得将本项目用于商业目的，包括收费服务、商业产品、商业托管或商业再分发。商业授权请联系作者。
-
-> 该许可证不是 OSI 认可的开源许可证，而是“源码公开 + 非商业使用”的许可模式。软件按“原样”提供，不附带任何明示或暗示的担保。
+你可以自由使用、修改、分发和商用本项目，但需保留版权声明和许可证文本。软件按“原样”提供，不附带任何明示或暗示的担保。
