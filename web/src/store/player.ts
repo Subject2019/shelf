@@ -11,6 +11,8 @@ import type { BookDetail, Chapter, Track } from "../api/types";
 import {
   getNativePlayer,
   type NativePlayPayload,
+  type NativeSleepTimer,
+  type NativeSleepTimerPayload,
   type NativeState,
 } from "../lib/nativePlayer";
 
@@ -225,8 +227,40 @@ function stopReporting() {
 
 let sleepTicker: number | null = null;
 
+/** 新版 Android 壳由前台服务计时；老版 APK 仍回退到网页定时器。 */
+function hasNativeSleepTimer(): boolean {
+  return (
+    typeof nativePlayer?.setSleepTimer === "function" &&
+    typeof nativePlayer?.clearSleepTimer === "function"
+  );
+}
+
+function nativeSleepTimerPayload(
+  chapters: Chapter[],
+  timer: Omit<NativeSleepTimerPayload, "chapterEndsSec">,
+): NativeSleepTimerPayload {
+  return {
+    ...timer,
+    chapterEndsSec: chapters.flatMap((chapter) =>
+      typeof chapter.end_sec === "number" &&
+      Number.isFinite(chapter.end_sec) &&
+      chapter.end_sec > 0
+        ? [chapter.end_sec]
+        : [],
+    ),
+  };
+}
+
+function pushNativeSleepTimer(payload: NativeSleepTimerPayload): void {
+  nativePlayer?.setSleepTimer?.(JSON.stringify(payload));
+}
+
+function clearNativeSleepTimer(): void {
+  nativePlayer?.clearSleepTimer?.();
+}
+
 function startSleepTicker() {
-  if (sleepTicker !== null) return;
+  if (sleepTicker !== null || hasNativeSleepTimer()) return;
   sleepTicker = window.setInterval(() => {
     const state = usePlayer.getState();
     if (state.sleepMode !== "duration") return;
@@ -548,6 +582,18 @@ export const usePlayer = create<PlayerState>((set, get) => {
               window.clearTimeout(coverTimer);
             }
           }
+          const chapterStartsSec = bookDetail.chapters.flatMap((chapter) =>
+            Number.isFinite(chapter.start_sec) && chapter.start_sec >= 0
+              ? [chapter.start_sec]
+              : [],
+          );
+          const chapterEndsSec = bookDetail.chapters.flatMap((chapter) =>
+            typeof chapter.end_sec === "number" &&
+            Number.isFinite(chapter.end_sec) &&
+            chapter.end_sec > 0
+              ? [chapter.end_sec]
+              : [],
+          );
           const payload: NativePlayPayload = {
             tracks: nativeTracks,
             startIndex: Math.max(
@@ -563,6 +609,8 @@ export const usePlayer = create<PlayerState>((set, get) => {
             token: getAccessToken() ?? "",
             deviceId: deviceId(),
             resume: isRestore,
+            chapterStartsSec,
+            chapterEndsSec,
           };
           nativePlayer.play(JSON.stringify(payload));
           set({ isPlaying: true });
@@ -824,29 +872,52 @@ export const usePlayer = create<PlayerState>((set, get) => {
       const state = get();
       if (audioEl) audioEl.volume = state.volume;
       const chapters = state.book?.chapters ?? [];
+      const durationSec = Math.max(60, Math.round(minutes * 60));
       set({
         sleepMode: "duration",
-        sleepRemainingSec: Math.max(60, Math.round(minutes * 60)),
+        sleepRemainingSec: durationSec,
         sleepChaptersLeft: 0,
         sleepFinishChapter: finishChapter,
         sleepWaitingChapterEnd: false,
         sleepChapterMark: chapterIndexAt(chapters, state.positionSec),
       });
-      startSleepTicker();
+      if (hasNativeSleepTimer()) {
+        pushNativeSleepTimer(
+          nativeSleepTimerPayload(chapters, {
+            mode: "duration",
+            durationSec,
+            chaptersLeft: 0,
+            finishChapter,
+          }),
+        );
+      } else {
+        startSleepTicker();
+      }
     },
 
     setSleepChapters(count) {
       const state = get();
       if (audioEl) audioEl.volume = state.volume;
       const chapters = state.book?.chapters ?? [];
+      const chaptersLeft = Math.max(1, Math.round(count));
       set({
         sleepMode: "chapters",
-        sleepChaptersLeft: Math.max(1, Math.round(count)),
+        sleepChaptersLeft: chaptersLeft,
         sleepRemainingSec: 0,
         sleepFinishChapter: false,
         sleepWaitingChapterEnd: false,
         sleepChapterMark: chapterIndexAt(chapters, state.positionSec),
       });
+      if (hasNativeSleepTimer()) {
+        pushNativeSleepTimer(
+          nativeSleepTimerPayload(chapters, {
+            mode: "chapters",
+            durationSec: 0,
+            chaptersLeft,
+            finishChapter: false,
+          }),
+        );
+      }
       stopSleepTicker();
     },
 
@@ -858,10 +929,21 @@ export const usePlayer = create<PlayerState>((set, get) => {
         return;
       }
       set({ sleepFinishChapter: value });
+      if (hasNativeSleepTimer() && state.sleepMode === "duration") {
+        pushNativeSleepTimer(
+          nativeSleepTimerPayload(state.book?.chapters ?? [], {
+            mode: "duration",
+            durationSec: state.sleepRemainingSec,
+            chaptersLeft: 0,
+            finishChapter: value,
+          }),
+        );
+      }
     },
 
     clearSleep() {
       stopSleepTicker();
+      if (hasNativeSleepTimer()) clearNativeSleepTimer();
       // 淡出可能把音量压低了，恢复用户设置的值
       if (audioEl) audioEl.volume = get().volume;
       set({
@@ -933,6 +1015,8 @@ export const usePlayer = create<PlayerState>((set, get) => {
     },
 
     handleSleepTick(positionSec) {
+      // Android 新版由前台服务独立计时，页面计时器在熄屏后会被冻结。
+      if (hasNativeSleepTimer()) return;
       const state = get();
       if (state.sleepMode === "off") return;
 
@@ -1122,6 +1206,27 @@ function setupNativePlayerState(): void {
         !hasError && typeof state.volume === "number"
           ? state.volume
           : current.volume;
+      let sleepPatch: Partial<PlayerState> | null = null;
+      if (typeof state.sleepTimer === "string" && hasNativeSleepTimer()) {
+        try {
+          const timer = JSON.parse(state.sleepTimer) as NativeSleepTimer;
+          if (
+            timer.mode === "off" ||
+            timer.mode === "duration" ||
+            timer.mode === "chapters"
+          ) {
+            sleepPatch = {
+              sleepMode: timer.mode,
+              sleepRemainingSec: Math.max(0, Math.round(timer.remainingSec ?? 0)),
+              sleepChaptersLeft: Math.max(0, Math.round(timer.chaptersLeft ?? 0)),
+              sleepFinishChapter: Boolean(timer.finishChapter),
+              sleepWaitingChapterEnd: Boolean(timer.waitingChapterEnd),
+            };
+          }
+        } catch {
+          // 原生状态格式异常时忽略定时器字段
+        }
+      }
       usePlayer.setState({
         isPlaying: hasError ? false : Boolean(state.playing),
         isLoading: hasError ? false : Boolean(state.buffering),
@@ -1133,6 +1238,7 @@ function setupNativePlayerState(): void {
         volume: nativeVolume,
         muted: nativeVolume === 0,
         error: state.error ?? null,
+        ...(sleepPatch ?? {}),
       });
       current.handleSleepTick(Number(state.positionSec) || 0);
       if (wasPlaying && !state.playing && !state.buffering) {

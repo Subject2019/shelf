@@ -503,7 +503,7 @@ def test_sync_clock_skew_does_not_lock_other_devices(
     assert normal["position_sec"] == 130.0
 
 
-# ---------------- 进度检查点（每本书最近 5 个） ----------------
+# ---------------- 进度检查点（每本书最近 7 个） ----------------
 
 
 def test_history_refreshes_in_place_within_delta(
@@ -554,8 +554,8 @@ def test_delete_progress_clears_history(client, headers, progress_data) -> None:
     assert items == []
 
 
-def test_history_keeps_latest_three(progress_data) -> None:
-    """长篇（10 小时）阈值 18 分钟：间隔 2000 秒每次新增，超过 3 条淘汰最旧。"""
+def test_history_keeps_latest_seven(progress_data) -> None:
+    """长篇（10 小时）阈值 18 分钟：间隔 2000 秒每次新增，超过 7 条淘汰最旧。"""
     session = get_session_factory()()
     try:
         user = session.scalar(select(User).where(User.username == "admin"))
@@ -585,8 +585,16 @@ def test_history_keeps_latest_three(progress_data) -> None:
             .order_by(ProgressHistory.created_at.desc(), ProgressHistory.id.desc())
         )
         rows = session.scalars(query).all()
-        assert len(rows) == HISTORY_LIMIT == 3
-        assert [int(row.position_sec) for row in rows] == [12000, 10000, 8000]
+        assert len(rows) == HISTORY_LIMIT == 7
+        assert [int(row.position_sec) for row in rows] == [
+            12000,
+            10000,
+            8000,
+            6000,
+            4000,
+            2000,
+            0,
+        ]
 
         # 300 秒 < 阈值 1080 秒：刷新最新一条，不新增
         record_checkpoint(
@@ -602,7 +610,7 @@ def test_history_keeps_latest_three(progress_data) -> None:
         session.commit()
 
         rows = session.scalars(query).all()
-        assert len(rows) == 3
+        assert len(rows) == 7
         assert rows[0].position_sec == 12300.0
         assert rows[0].created_at == base + 100
     finally:

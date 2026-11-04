@@ -32,6 +32,10 @@ export interface NativePlayPayload {
   deviceId: string;
   /** 是否从服务器进度恢复；只有恢复时才允许被原生本地较新进度覆盖 */
   resume: boolean;
+  /** 书本绝对秒数上的章节起点；通知栏/车机切集时使用 */
+  chapterStartsSec: number[];
+  /** 书本绝对秒数上的章节终点；无章节时为空 */
+  chapterEndsSec: number[];
 }
 
 export interface NativeState {
@@ -44,6 +48,27 @@ export interface NativeState {
   /** 原生播放器音量（0~1）；通知栏/锁屏调整音量时回传 */
   volume?: number;
   error: string | null;
+  /** 原生定时器的 JSON 状态；老版 APK 没有该字段 */
+  sleepTimer?: string | null;
+}
+
+export type NativeSleepMode = "off" | "duration" | "chapters";
+
+export interface NativeSleepTimerPayload {
+  mode: NativeSleepMode;
+  durationSec: number;
+  chaptersLeft: number;
+  finishChapter: boolean;
+  /** 书本绝对秒数上的章节结束边界；没有章节时为空 */
+  chapterEndsSec: number[];
+}
+
+export interface NativeSleepTimer {
+  mode: NativeSleepMode;
+  remainingSec: number;
+  chaptersLeft: number;
+  finishChapter: boolean;
+  waitingChapterEnd: boolean;
 }
 
 export interface ShelfPlayerBridge {
@@ -58,6 +83,9 @@ export interface ShelfPlayerBridge {
   next(): void;
   previous(): void;
   stop(): void;
+  /** 新版 APK：把定时关闭交给前台服务，避免熄屏后 WebView 定时器被冻结 */
+  setSleepTimer?(payload: string): void;
+  clearSleepTimer?(): void;
 }
 
 declare global {

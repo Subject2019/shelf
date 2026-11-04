@@ -259,7 +259,7 @@ def list_progress_history(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> ProgressHistoryList:
-    """该账号在这本书上的最近回溯点（最多 3 条，新→旧）。"""
+    """该账号在这本书上的最近回溯点（最多 7 条，新→旧）。"""
     book = require_visible_book(db, current_user, book_id)
     rows = db.scalars(
         select(ProgressHistory)

@@ -322,6 +322,20 @@ public class MainActivity extends Activity {
         }
 
         @JavascriptInterface
+        public void setSleepTimer(String json) {
+            runOnUiThread(() -> {
+                if (nativePlayer != null) nativePlayer.setSleepTimer(json);
+            });
+        }
+
+        @JavascriptInterface
+        public void clearSleepTimer() {
+            runOnUiThread(() -> {
+                if (nativePlayer != null) nativePlayer.clearSleepTimer();
+            });
+        }
+
+        @JavascriptInterface
         public void stop() {
             runOnUiThread(() -> {
                 if (nativePlayer != null) nativePlayer.stop();

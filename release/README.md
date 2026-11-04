@@ -11,7 +11,7 @@
 | `shelf-<版本>.apk` | 3.1 MB | Android WebView 壳 **release 签名**包 | `adb install -r` 或直接安装 |
 | `*.sha256` | 约 100 B | 上面三个包的校验值 | `sha256sum -c xxx.sha256` |
 
-示例：`shelf-0.2.5-linux-amd64-docker.tar.gz`
+示例：`shelf-0.2.10-linux-amd64-docker.tar.gz`
 
 > ⚠️ `-docker.tar.gz` 里是 `blobs/` + `manifest.json`，这是 Docker 的镜像归档格式，
 > **不是**源码目录，也**不需要** Dockerfile。`docker load` 后镜像里已含前端静态资源与 ffmpeg。
@@ -19,9 +19,9 @@
 ### 离线镜像怎么用
 
 ```bash
-sha256sum -c shelf-0.2.5-linux-amd64-docker.tar.gz.sha256
-docker load -i shelf-0.2.5-linux-amd64-docker.tar.gz
-docker images shelf            # 0.2.5 与 latest 两个 tag
+sha256sum -c shelf-0.2.10-linux-amd64-docker.tar.gz.sha256
+docker load -i shelf-0.2.10-linux-amd64-docker.tar.gz
+docker images shelf            # 0.2.10 与 latest 两个 tag
 
 # 方式一：compose（推荐，仓库里的 compose 已指向该镜像）
 docker compose up -d
@@ -29,14 +29,14 @@ docker compose up -d
 # 方式二：直接跑
 docker run -d --name shelf -p 8080:8080 \
   -v /path/to/audiobooks:/audiobooks:ro -v /path/to/data:/data \
-  shelf:0.2.5
+  shelf:0.2.10
 ```
 
 ### Android APK 怎么用
 
 ```bash
-sha256sum -c shelf-0.2.5.apk.sha256
-adb install -r shelf-0.2.5.apk
+sha256sum -c shelf-0.2.10.apk.sha256
+adb install -r shelf-0.2.10.apk
 # 或把 APK 传到手机直接安装
 ```
 
@@ -62,7 +62,7 @@ deploy/build-release.sh --docker
 ## 常规包结构
 
 ```
-shelf-0.2.5-linux-amd64/
+shelf-0.2.10-linux-amd64/
 ├── VERSION
 ├── MANIFEST.txt          # 文件清单 + sha256
 ├── install.sh            # 安装到 /opt/echoshelf + systemd

@@ -30,7 +30,7 @@ users ──< library_users >── libraries ──< media_files
 而一个「每章一个 mp3」的书是 **N 条 media_file + N 条 track**（1:1）。
 这样扫描不会因 CUE 而重复解析大文件，进度/章节也能统一到「全书绝对秒数」。
 
-另有 `progress_history`（每本书 3 个回溯点）与 `listening_daily`（按天收听秒数）两张辅助表，见 2.14 / 2.15。
+另有 `progress_history`（每本书 7 个回溯点）与 `listening_daily`（按天收听秒数）两张辅助表，见 2.14 / 2.15。
 
 ## 2. 表定义
 
@@ -239,7 +239,7 @@ refresh_tokens：`id` INTEGER PK，`user_id` FK，`device_id` TEXT，`token_hash
 
 索引 `idx_progress_history_user_book (user_id, book_id, created_at)`。
 
-每本最多 3 条：`PUT /progress` 被接受时，若与**任意**已有回溯点的距离 ≥ `max(5 分钟, 总时长 3%)`
+每本最多 7 条：`PUT /progress` 被接受时，若与**任意**已有回溯点的距离 ≥ `max(5 分钟, 总时长 3%)`
 （封顶 30 分钟）则新增并淘汰最旧；否则刷新最近的那条（避免「误拖后撤销」留下两条几乎相同的记录）。
 
 ### 2.15 listening_daily（每日收听）

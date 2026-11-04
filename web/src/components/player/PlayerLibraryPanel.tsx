@@ -275,7 +275,7 @@ export default function PlayerLibraryPanel({
       ) : (
         <div className="min-h-0 flex-1 overflow-y-auto py-1">
           <p className="px-4 pt-3 pb-2 text-[11px] leading-relaxed text-zinc-500">
-            位置变化超过阈值时自动记一个点，最多保留 3 个；误拖进度条后可回到这里。
+            位置变化超过阈值时自动记一个点，最多保留 7 个；误拖进度条后可回到这里。
           </p>
 
           {historyItems.length === 0 && !historyQuery.isLoading && (

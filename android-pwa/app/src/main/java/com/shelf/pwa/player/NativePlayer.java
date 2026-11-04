@@ -40,6 +40,11 @@ public class NativePlayer {
     private static final String CMD_SEEK_TO = "com.shelf.pwa.SEEK_TO";
     private static final String CMD_PROGRESS_CONTEXT = "com.shelf.pwa.PROGRESS_CONTEXT";
     private static final String CMD_PROGRESS_TOKEN = "com.shelf.pwa.PROGRESS_TOKEN";
+    private static final String CMD_SLEEP_TIMER = PlaybackService.CMD_SLEEP_TIMER;
+    private static final String CMD_SLEEP_TIMER_CLEAR = PlaybackService.CMD_SLEEP_TIMER_CLEAR;
+    private static final String CMD_NEXT_UNIT = PlaybackService.CMD_NEXT_UNIT;
+    private static final String CMD_PREV_UNIT = PlaybackService.CMD_PREV_UNIT;
+    private static final String EXTRA_SLEEP_TIMER = PlaybackService.EXTRA_SLEEP_TIMER;
 
     private final Context context;
     private final StateSink sink;
@@ -47,6 +52,7 @@ public class NativePlayer {
 
     private MediaController controller;
     private String pendingPlay;
+    private String pendingSleepTimer;
     private boolean released;
     private String lastError;
 
@@ -55,6 +61,8 @@ public class NativePlayer {
     private String authToken = "";
     private String deviceId = "";
     private boolean resumePending;
+    private double[] chapterStartsSec = new double[0];
+    private double[] chapterEndsSec = new double[0];
 
     private final List<TrackInfo> tracks = new ArrayList<>();
 
@@ -110,6 +118,11 @@ public class NativePlayer {
                     pendingPlay = null;
                     doPlay(json);
                 }
+                if (pendingSleepTimer != null) {
+                    String json = pendingSleepTimer;
+                    pendingSleepTimer = null;
+                    applySleepTimer(json);
+                }
             } catch (Exception error) {
                 Log.e(TAG, "connect failed", error);
                 emitError("无法连接播放服务：" + error.getMessage());
@@ -127,6 +140,8 @@ public class NativePlayer {
 
     private void doPlay(String json) {
         lastError = null;
+        // 切书时旧书的定时关闭不应继续生效。
+        sendSleepTimerClear();
         try {
             JSONObject root = new JSONObject(json);
             JSONArray array = root.getJSONArray("tracks");
@@ -177,6 +192,7 @@ public class NativePlayer {
                 trackExtras.putInt("trackId", info.id);
                 trackExtras.putDouble("offsetSec", info.offsetSec);
                 trackExtras.putDouble("clipStartSec", info.clipStartSec);
+                trackExtras.putDouble("clipEndSec", item.optDouble("clipEndSec", 0));
                 trackExtras.putDouble("durationSec", info.durationSec);
                 metadata.setExtras(trackExtras);
 
@@ -206,6 +222,8 @@ public class NativePlayer {
             String payloadDevice = root.optString("deviceId", "");
             if (!payloadDevice.isEmpty()) deviceId = payloadDevice;
             resumePending = root.optBoolean("resume", false);
+            chapterStartsSec = doubleArray(root.optJSONArray("chapterStartsSec"));
+            chapterEndsSec = doubleArray(root.optJSONArray("chapterEndsSec"));
 
             // 原生本地有更新的进度（例如 token 过期导致补传失败）时，恢复播放优先用它。
             if (resumePending && bookId > 0) {
@@ -238,6 +256,11 @@ public class NativePlayer {
             controller.play();
             // 再发一次，确保服务在 setMediaItems 之后拿到上下文（自定义命令可能排队）。
             sendProgressContext();
+            if (pendingSleepTimer != null) {
+                String timer = pendingSleepTimer;
+                pendingSleepTimer = null;
+                applySleepTimer(timer);
+            }
         } catch (Exception error) {
             Log.e(TAG, "play failed", error);
             emitError("播放失败：" + error.getMessage());
@@ -278,6 +301,52 @@ public class NativePlayer {
         if (controller != null) controller.setVolume(volume);
     }
 
+    /** 定时关闭交给前台服务，避免 WebView 熄屏后 setTimeout/setInterval 被冻结。 */
+    public void setSleepTimer(String json) {
+        if (controller == null) {
+            pendingSleepTimer = json;
+            return;
+        }
+        applySleepTimer(json);
+    }
+
+    public void clearSleepTimer() {
+        pendingSleepTimer = null;
+        sendSleepTimerClear();
+    }
+
+    private void applySleepTimer(String json) {
+        if (controller == null) {
+            pendingSleepTimer = json;
+            return;
+        }
+        try {
+            JSONObject root = new JSONObject(json);
+            Bundle args = new Bundle();
+            args.putString("mode", root.optString("mode", "off"));
+            args.putLong("durationMs",
+                    Math.round(root.optDouble("durationSec", 0) * 1000));
+            args.putInt("chaptersLeft", root.optInt("chaptersLeft", 0));
+            args.putBoolean("finishChapter", root.optBoolean("finishChapter", false));
+            JSONArray ends = root.optJSONArray("chapterEndsSec");
+            double[] chapterEnds = new double[ends == null ? 0 : ends.length()];
+            for (int i = 0; i < chapterEnds.length; i++) {
+                chapterEnds[i] = ends.optDouble(i, 0);
+            }
+            args.putDoubleArray("chapterEndsSec", chapterEnds);
+            controller.sendCustomCommand(
+                    new SessionCommand(CMD_SLEEP_TIMER, Bundle.EMPTY), args);
+        } catch (Exception error) {
+            Log.w(TAG, "sleep timer config failed", error);
+        }
+    }
+
+    private void sendSleepTimerClear() {
+        if (controller == null) return;
+        controller.sendCustomCommand(
+                new SessionCommand(CMD_SLEEP_TIMER_CLEAR, Bundle.EMPTY), Bundle.EMPTY);
+    }
+
     /** 网页刷新 access token 后调用，让后台服务继续上报。 */
     public void setAuth(String token) {
         if (token == null || token.isEmpty()) return;
@@ -301,8 +370,19 @@ public class NativePlayer {
         args.putString("token", authToken);
         args.putString("deviceId", deviceId);
         args.putBoolean("flushPending", resumePending);
+        args.putDoubleArray("chapterStartsSec", chapterStartsSec);
+        args.putDoubleArray("chapterEndsSec", chapterEndsSec);
         controller.sendCustomCommand(
                 new SessionCommand(CMD_PROGRESS_CONTEXT, Bundle.EMPTY), args);
+    }
+
+    private static double[] doubleArray(JSONArray array) {
+        if (array == null) return new double[0];
+        double[] values = new double[array.length()];
+        for (int i = 0; i < values.length; i++) {
+            values[i] = array.optDouble(i, 0);
+        }
+        return values;
     }
 
     private int indexOfTrack(int id) {
@@ -313,14 +393,19 @@ public class NativePlayer {
     }
 
     public void next() {
-        if (controller != null) controller.seekToNextMediaItem();
+        if (controller == null) return;
+        controller.sendCustomCommand(
+                new SessionCommand(CMD_NEXT_UNIT, Bundle.EMPTY), Bundle.EMPTY);
     }
 
     public void previous() {
-        if (controller != null) controller.seekToPreviousMediaItem();
+        if (controller == null) return;
+        controller.sendCustomCommand(
+                new SessionCommand(CMD_PREV_UNIT, Bundle.EMPTY), Bundle.EMPTY);
     }
 
     public void stop() {
+        sendSleepTimerClear();
         if (controller != null) {
             controller.stop();
             controller.clearMediaItems();
@@ -367,6 +452,11 @@ public class NativePlayer {
             json.put("positionSec", position);
             json.put("rate", controller.getPlaybackParameters().speed);
             json.put("volume", controller.getVolume());
+            Bundle sessionExtras = controller.getSessionExtras();
+            String sleepTimer = sessionExtras == null
+                    ? null
+                    : sessionExtras.getString(EXTRA_SLEEP_TIMER, null);
+            if (sleepTimer != null) json.put("sleepTimer", sleepTimer);
             json.put("error", lastError == null ? JSONObject.NULL : lastError);
             sink.onState(json.toString());
         } catch (Exception error) {

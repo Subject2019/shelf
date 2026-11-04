@@ -1,8 +1,14 @@
 # android-pwa — Android WebView 壳
 
-**状态：0.2.9（2026-11-01）**。包名 `com.shelf.pwa`，minSdk 24 / targetSdk 35，AGP 8.5.2 + Gradle 8.7 + Media3 1.3.1 + Java 17。
+**状态：0.2.10（2026-11-05，本地修复版）**。包名 `com.shelf.pwa`，minSdk 24 / targetSdk 35，AGP 8.5.2 + Gradle 8.7 + Media3 1.3.1 + Java 17。
 
 不内置 WebUI：启动后加载服务器上的 shelf 网页，界面、登录、书库全部复用 WebUI。音频播放由原生 Media3 前台服务接管，因此支持后台播放、状态栏/锁屏媒体控制和息屏续播。
+
+原生层负责两个不依赖 WebView 前台状态的能力：
+
+- 定时关闭在 `PlaybackService` 中计时并渐隐/暂停，熄屏或 WebView 被冻结时仍然生效；WebUI 只负责设置和显示倒计时。
+- 通过 `MediaButtonReceiver` 和 `MediaSession.Callback.onMediaButtonEvent` 接收蓝牙/车机的 `MEDIA_NEXT` / `MEDIA_PREVIOUS`；通知栏、系统媒体卡片、车机和网页统一收敛到章节感知的切集逻辑，单文件多章节按章节边界跳转，多文件无章节才切 MediaItem。
+- 通知栏媒体按钮只保留“上一集 / 播放暂停 / 下一集”三个，快退/快进 15 秒不再显示；系统媒体卡片的 `COMMAND_SEEK_BACK/FORWARD` 也从可用命令中移除。
 
 ## 结构
 
@@ -86,7 +92,7 @@ cd android-pwa
 
 ## 排查
 
-- **没有媒体卡片/封面**：检查通知权限；确认 App 版本 0.2.9；确认前端包含 `ShelfPlayer` 适配层和进度上下文（开发 5173 或重建后的生产镜像）。
+- **没有媒体卡片/封面**：检查通知权限；确认 App 版本 0.2.10；确认前端包含 `ShelfPlayer` 适配层和进度上下文（开发 5173 或重建后的生产镜像）。
 - **状态栏有播放但按钮少**：Android 通知栏收起时最多显示 3 个动作，展开后才是完整 5 个；锁屏卡片由系统渲染，部分 ROM 会重排。
 - **图标被裁切**：自适应图标前景已限制在安全区；卸载重装或重启启动器/清除启动器缓存。
 - **播放失败**：看 logcat 标签 `ShelfNativePlayer`；确认 `stream_url` 可访问、token 未过期。
