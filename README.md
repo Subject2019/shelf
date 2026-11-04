@@ -1,7 +1,7 @@
 # 声架 shelf
 
 <p align="center">
-  <a href="https://github.com/Subject2019/shelf/releases/latest"><img alt="release" src="https://img.shields.io/github/v/release/Subject2019/shelf?style=flat-square&label=release" /></a>
+  <a href="https://github.com/Subject2019/shelf/releases/latest"><img alt="release" src="https://img.shields.io/github/v/release/Subject2019/shelf?style=flat-square&label=release&cacheSeconds=300" /></a>
   <a href="https://github.com/users/Subject2019/packages/container/shelf"><img alt="docker" src="https://img.shields.io/badge/GHCR-ghcr.io%2Fsubject2019%2Fshelf-2496ED?style=flat-square&logo=docker&logoColor=white" /></a>
   <img alt="android" src="https://img.shields.io/badge/Android-0.2.10-3DDC84?style=flat-square&logo=android&logoColor=white" />
   <img alt="fnos" src="https://img.shields.io/badge/fnOS-0.2.10--1-1F7A5A?style=flat-square" />
