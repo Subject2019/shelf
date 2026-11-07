@@ -1,6 +1,6 @@
 [project]
 name = "shelf"
-version = "0.2.10"
+version = "0.2.11"
 description = "自托管有声书服务器"
 authors = [{ name = "subject" }]
 license = { text = "MIT" }

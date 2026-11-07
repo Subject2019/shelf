@@ -2,16 +2,16 @@
 
 声架（shelf）是面向飞牛 NAS 的自托管有声书服务器：自动扫描书库，支持 M4B/MP3 等多格式与章节播放、多端进度同步、收藏和收听统计，并可通过 Android App 原生后台播放。
 
-本目录基于现有镜像 `ghcr.io/subject2019/shelf:0.2.10` 构建飞牛 fnOS 应用包。
+本目录基于现有镜像 `ghcr.io/subject2019/shelf:0.2.11` 构建飞牛 fnOS 应用包。
 
 - 应用名：`shelf`
 - 显示名称：**声架**
-- 应用包版本：`0.2.10-1`（运行镜像为 `0.2.10`）
+- 应用包版本：`0.2.11-1`（运行镜像为 `0.2.11`）
 - 架构：`x86`（当前镜像只有 `linux/amd64`）
 - 容器名：`shelf-fnos`
 - 默认端口：`8080`，安装时可修改
 
-> 前置条件：飞牛设备需要能访问 GHCR，并且 `ghcr.io/subject2019/shelf:0.2.10` 必须为 Public；如果仍为 Private，请先在设备上执行 `docker login ghcr.io`。
+> 前置条件：飞牛设备需要能访问 GHCR，并且 `ghcr.io/subject2019/shelf:0.2.11` 必须为 Public；如果仍为 Private，请先在设备上执行 `docker login ghcr.io`。
 
 ## 目录结构
 
@@ -159,4 +159,4 @@ fnos/app/docker/docker-compose.yaml
 fnos/manifest
 ```
 
-`manifest.version` 是 fpk 版本，可以和运行镜像版本不同（当前 fpk 为 `0.2.10-1`，镜像为 `0.2.10`）。
+`manifest.version` 是 fpk 版本，可以和运行镜像版本不同（当前 fpk 为 `0.2.11-1`，镜像为 `0.2.11`）。

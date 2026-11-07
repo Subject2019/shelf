@@ -464,8 +464,13 @@ export const usePlayer = create<PlayerState>((set, get) => {
       const current = get();
       if (current.book?.id === bookId && (audioEl || nativePlayer)) {
         if (!current.isPlaying) {
-          // 先对齐账号的最新进度再播放：另一台设备可能已经听远了
+          // 同一本书已加载但暂停：先对齐账号进度，再向前跳到服务端最新位置。
+          // 否则重新登录后点击「继续播放」只会 resume()，仍停在旧的第一章。
           await get().syncFromServer();
+          const latest = await api.progress(bookId).catch(() => null);
+          if (latest && latest.position_sec > get().positionSec + 5) {
+            get().seekTo(latest.position_sec);
+          }
           if (nativePlayer) {
             const token = getAccessToken();
             if (token) nativePlayer.setAuth?.(token);
@@ -484,9 +489,12 @@ export const usePlayer = create<PlayerState>((set, get) => {
 
       set({ isLoading: true, error: null });
       try {
-        const [detail, playToken] = await Promise.all([
+        const wantsRestore = options?.positionSec === undefined;
+        const [detail, playToken, freshProgress] = await Promise.all([
           api.bookDetail(bookId),
           api.playToken(bookId),
+          // 详情可能来自 React Query 缓存；恢复播放前直接读一次当前账号的权威进度。
+          wantsRestore ? api.progress(bookId).catch(() => null) : Promise.resolve(null),
         ]);
         const tracks = withOffsets(detail.tracks);
         if (tracks.length === 0) {
@@ -501,9 +509,28 @@ export const usePlayer = create<PlayerState>((set, get) => {
             .then((list) => list.items)
             .catch(() => []);
         }
-        const bookDetail = { ...detail, chapters };
+        const percent =
+          freshProgress && detail.total_duration_sec > 0
+            ? Math.round(
+                Math.min(
+                  100,
+                  (freshProgress.position_sec / detail.total_duration_sec) * 100,
+                ) * 100,
+              ) / 100
+            : 0;
+        const bookDetail = {
+          ...detail,
+          chapters,
+          progress: freshProgress
+            ? {
+                position_sec: freshProgress.position_sec,
+                percent,
+                is_finished: freshProgress.is_finished,
+              }
+            : detail.progress,
+        };
 
-        const savedProgress = detail.progress?.position_sec ?? 0;
+        const savedProgress = freshProgress?.position_sec ?? detail.progress?.position_sec ?? 0;
         const saved = Math.max(0, options?.positionSec ?? savedProgress);
         // 跳过片头：只在「从书本进度接着听」时生效；
         // 书签/检查点这类显式位置不干预（它们指向用户自己选的地方）。

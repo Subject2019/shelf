@@ -330,6 +330,18 @@ export interface ProgressPutResult {
   updated_at: number;
 }
 
+export interface ProgressOut {
+  book_id: number;
+  position_sec: number;
+  track_id: number | null;
+  track_position_sec: number;
+  playback_rate: number;
+  is_finished: boolean;
+  device_id: string | null;
+  client_updated_at: number;
+  updated_at: number;
+}
+
 export interface ApiErrorBody {
   error?: {
     code?: string;

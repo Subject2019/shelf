@@ -1,4 +1,4 @@
-# EchoShelf HTTP API 契约（v0.2.10）
+# EchoShelf HTTP API 契约（v0.2.11）
 
 > 面向 WebUI、安卓 App 与第三方客户端。本文件与代码同步维护，**以服务端实现为准**。
 > 机器可读契约：`GET /api/openapi.json`，交互式文档：`GET /api/docs`。
@@ -195,7 +195,7 @@ sudo -u echoshelf /opt/echoshelf/bin/echoshelf admin create
 ```json
 { "username": "admin", "password": "******",
   "device": { "id": "android-abc123", "name": "Pixel 8", "platform": "android",
-              "app_version": "0.2.10", "os": "Android 14",
+              "app_version": "0.2.11", "os": "Android 14",
               "form_factor": "phone", "screen": "1080×2400 · 2.6x",
               "user_agent": "Mozilla/5.0 (Linux; Android 14; Pixel 8) …" } }
 ```
@@ -894,7 +894,7 @@ WebUI 已按此实现（`web/src/store/player.ts` 的 `syncFromServer()` +
 
 ```json
 { "items": [ { "id": "web-dymrmm7k", "user_id": 1, "username": "demo",
-               "name": "Chrome 141", "platform": "web", "app_version": "0.2.10",
+               "name": "Chrome 141", "platform": "web", "app_version": "0.2.11",
                "os": "Android 14", "form_factor": "phone", "screen": "390×844 · 3x",
                "user_agent": "Mozilla/5.0 (Linux; Android 14; Pixel 8) … Chrome/141.0.0.0 Mobile Safari/537.36",
                "created_at": 1792852192, "last_seen_at": 1792872329,
@@ -965,7 +965,7 @@ WebUI 已按此实现（`web/src/store/player.ts` 的 `syncFromServer()` +
 ### GET /health（公开）
 
 ```json
-{ "status": "ok", "version": "0.2.10", "db": "ok", "ffmpeg": true,
+{ "status": "ok", "version": "0.2.11", "db": "ok", "ffmpeg": true,
   "libraries": 1, "books": 4, "uptime_sec": 505,
   "transcode": { "enabled": true, "active": 1, "completed": 12 } }
 ```

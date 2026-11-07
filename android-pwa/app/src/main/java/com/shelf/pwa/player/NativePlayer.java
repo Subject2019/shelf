@@ -245,14 +245,12 @@ public class NativePlayer {
                     0, startPositionSec - startTrack.offsetSec - startTrack.clipStartSec);
             long startMs = Math.round(inClip * 1000);
 
-            controller.setMediaItems(items);
+            // 起始位置必须在 setMediaItems 时原子传入。
+            // 先 setMediaItems 再发自定义 SEEK_TO 时，命令可能早于播放列表生效而被丢弃，
+            // 表现就是恢复播放总从第一章开始。
+            controller.setMediaItems(items, startIndex, startMs);
             controller.setPlaybackSpeed(rate > 0 ? rate : 1f);
             controller.prepare();
-            Bundle startArgs = new Bundle();
-            startArgs.putInt("index", startIndex);
-            startArgs.putLong("positionMs", startMs);
-            controller.sendCustomCommand(
-                    new SessionCommand(CMD_SEEK_TO, Bundle.EMPTY), startArgs);
             controller.play();
             // 再发一次，确保服务在 setMediaItems 之后拿到上下文（自定义命令可能排队）。
             sendProgressContext();

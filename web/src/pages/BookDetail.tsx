@@ -92,9 +92,12 @@ export default function BookDetail() {
   const percent = progress && !progress.is_finished ? progress.percent : 0;
 
   function play(positionSec?: number) {
-    void usePlayer.getState().open(book.id, {
-      positionSec: positionSec ?? progress?.position_sec,
-    });
+    // 只有章节/书签等显式位置才传 positionSec；
+    // 「继续收听」交给播放器在打开前重新读取服务端最新进度，避免用详情缓存里的旧值。
+    void usePlayer.getState().open(
+      book.id,
+      positionSec === undefined ? undefined : { positionSec },
+    );
   }
 
   return (

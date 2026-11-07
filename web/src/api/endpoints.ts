@@ -25,6 +25,7 @@ import type {
   ListeningStats,
   SeriesList,
   ProgressHistoryList,
+  ProgressOut,
   ProgressPut,
   ProgressPutResult,
   RecentProgressList,
@@ -148,6 +149,10 @@ export const api = {
   /** <audio> 无法自定义请求头，用它换一个绑定本书的短时流令牌。 */
   playToken: (bookId: number) =>
     request<PlayToken>(`/books/${bookId}/play-token`, { method: "POST" }),
+
+  /** 直接读取该账号在这本书上的最新进度，恢复播放前强制对齐。 */
+  progress: (bookId: number) =>
+    request<ProgressOut>(`/progress/${bookId}`),
 
   putProgress: (bookId: number, payload: ProgressPut) =>
     request<ProgressPutResult>(`/progress/${bookId}`, {

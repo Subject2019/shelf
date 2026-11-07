@@ -3,8 +3,8 @@
 <p align="center">
   <a href="https://github.com/Subject2019/shelf/releases/latest"><img alt="release" src="https://img.shields.io/github/v/release/Subject2019/shelf?style=flat-square&label=release&cacheSeconds=300" /></a>
   <a href="https://github.com/users/Subject2019/packages/container/shelf"><img alt="docker" src="https://img.shields.io/badge/GHCR-ghcr.io%2Fsubject2019%2Fshelf-2496ED?style=flat-square&logo=docker&logoColor=white" /></a>
-  <img alt="android" src="https://img.shields.io/badge/Android-0.2.10-3DDC84?style=flat-square&logo=android&logoColor=white" />
-  <img alt="fnos" src="https://img.shields.io/badge/fnOS-0.2.10--1-1F7A5A?style=flat-square" />
+  <img alt="android" src="https://img.shields.io/badge/Android-0.2.11-3DDC84?style=flat-square&logo=android&logoColor=white" />
+  <img alt="fnos" src="https://img.shields.io/badge/fnOS-0.2.11--1-1F7A5A?style=flat-square" />
   <a href="https://github.com/Subject2019/shelf/stargazers"><img alt="stars" src="https://img.shields.io/github/stars/Subject2019/shelf?style=flat-square" /></a>
   <a href="./LICENSE"><img alt="license" src="https://img.shields.io/badge/license-MIT-2ea44f?style=flat-square" /></a>
 </p>
@@ -127,7 +127,7 @@ shelf 是一个面向 NAS 的自托管有声书服务器。把有声书目录挂
 ### 客户端
 
 - WebUI 响应式布局，浏览器直接使用（未内置 service worker，暂不等同完整 PWA）
-- Android 壳（`android-pwa/`，包名 `com.shelf.pwa`，当前 0.2.10）：WebView 复用 WebUI，原生 Media3 负责后台播放；状态栏/锁屏提供上一集、播放/暂停、下一集、封面和当前单集进度条；进度由原生服务每 15 秒直报，划掉后台也会继续同步
+- Android 壳（`android-pwa/`，包名 `com.shelf.pwa`，当前 0.2.11）：WebView 复用 WebUI，原生 Media3 负责后台播放；状态栏/锁屏提供上一集、播放/暂停、下一集、封面和当前单集进度条；进度由原生服务每 15 秒直报，划掉后台也会继续同步
 - 原生播放依赖服务端 WebUI 中的 `ShelfPlayer` 适配层；升级 APK 或前端后请保持两端一致，否则会回退到 WebView `<audio>`，状态栏不显示媒体卡片
 - 原生 Compose 版（`android/`）为早期实验，已搁置；其 Media3 播放服务已被 WebView 壳复用
 
@@ -155,9 +155,9 @@ shelf 是一个面向 NAS 的自托管有声书服务器。把有声书目录挂
 
 | 安装包 | 适用场景 | 获取方式 |
 |---|---|---|
-| **Android APK** | 手机上听书，连接已有 shelf 服务端 | [下载 `shelf-0.2.10.apk`](https://github.com/Subject2019/shelf/releases/download/v0.2.10/shelf-0.2.10.apk) |
-| **飞牛 fnOS fpk** | 飞牛 NAS 一键安装，包含服务端 | [下载 `shelf-0.2.10-fnos.fpk`](https://github.com/Subject2019/shelf/releases/download/v0.2.10/shelf-0.2.10-fnos.fpk) |
-| **Docker 镜像** | 群晖 / 威联通 / Unraid / Linux 等 | `ghcr.io/subject2019/shelf:0.2.10`，见下方 Docker 章节 |
+| **Android APK** | 手机上听书，连接已有 shelf 服务端 | [下载 `shelf-0.2.11.apk`](https://github.com/Subject2019/shelf/releases/download/v0.2.11/shelf-0.2.11.apk) |
+| **飞牛 fnOS fpk** | 飞牛 NAS 一键安装，包含服务端 | [下载 `shelf-0.2.11-fnos.fpk`](https://github.com/Subject2019/shelf/releases/download/v0.2.11/shelf-0.2.11-fnos.fpk) |
+| **Docker 镜像** | 群晖 / 威联通 / Unraid / Linux 等 | `ghcr.io/subject2019/shelf:0.2.11`，见下方 Docker 章节 |
 
 > Android APK 只是客户端，需要连接一个正在运行的 shelf 服务端；飞牛 fpk 和 Docker 镜像都包含服务端。
 >
@@ -244,7 +244,7 @@ docker build -f deploy/docker/Dockerfile -t shelf:latest .
 ### Android 客户端（android-pwa）
 
 <p>
-  <a href="https://github.com/Subject2019/shelf/releases/download/v0.2.10/shelf-0.2.10.apk"><img alt="下载 Android APK" src="https://img.shields.io/badge/下载-Android%200.2.10-3DDC84?style=for-the-badge&logo=android&logoColor=white" /></a>
+  <a href="https://github.com/Subject2019/shelf/releases/download/v0.2.11/shelf-0.2.11.apk"><img alt="下载 Android APK" src="https://img.shields.io/badge/下载-Android%200.2.11-3DDC84?style=for-the-badge&logo=android&logoColor=white" /></a>
 </p>
 
 WebView 壳不内置网页：启动后从服务器加载 WebUI，音频播放由原生 Media3 前台服务接管。完整说明见 [`android-pwa/README.md`](./android-pwa/README.md)。
@@ -278,14 +278,14 @@ cd android-pwa
 ### 飞牛 fnOS（fpk）
 
 <p>
-  <a href="https://github.com/Subject2019/shelf/releases/download/v0.2.10/shelf-0.2.10-fnos.fpk"><img alt="下载飞牛 fpk" src="https://img.shields.io/badge/下载-飞牛%20fnOS%200.2.10--1-1F7A5A?style=for-the-badge" /></a>
+  <a href="https://github.com/Subject2019/shelf/releases/download/v0.2.11/shelf-0.2.11-fnos.fpk"><img alt="下载飞牛 fpk" src="https://img.shields.io/badge/下载-飞牛%20fnOS%200.2.11--1-1F7A5A?style=for-the-badge" /></a>
 </p>
 
 `fpk` 是飞牛 NAS 的应用安装包，内置服务端镜像，不要求用户自己写 Compose。
 
 安装步骤：
 
-1. 在飞牛应用中心选择「手动安装」，上传 `shelf-0.2.10-fnos.fpk`；
+1. 在飞牛应用中心选择「手动安装」，上传 `shelf-0.2.11-fnos.fpk`；
 2. 安装向导填写访问端口、管理员账号密码和是否启用转码；
 3. 有声书目录可留空使用共享目录 `shelf/media`，也可以填写飞牛上的已有目录；
 4. 安装完成后从桌面「声架」入口打开，进入「设置 → 书库」确认路径为容器内 `/audiobooks`。
@@ -394,11 +394,11 @@ shelf/
 按钮顺序由 App 固定为上一集、快退、播放/暂停、快进、下一集；进度条已对系统暴露，具体间距、分组和进度条样式由手机 ROM 的系统媒体卡片决定，部分 ROM 可能无法完全等分。
 
 **Android 划掉后台后进度少一段？**
-确认使用 0.2.10+ APK，并且服务端 `web/dist` 已更新：网页需要把 `bookId/baseUrl/token/deviceId` 注入原生服务，旧前端不会触发原生直报。可用 `adb logcat -s ShelfProgress` 查看上报结果；如果是 HTTP 401，等网页刷新 token 后会自动补传。
+确认使用 0.2.11+ APK，并且服务端 `web/dist` 已更新：网页需要把 `bookId/baseUrl/token/deviceId` 注入原生服务，旧前端不会触发原生直报。可用 `adb logcat -s ShelfProgress` 查看上报结果；如果是 HTTP 401，等网页刷新 token 后会自动补传。
 
 ## 路线图
 
-Web 端与 Android 壳的核心链路已完成（Android 壳 0.2.10）；后续主要是发布、兼容性打磨与离线能力。详见 [`docs/ROADMAP.md`](./docs/ROADMAP.md)。
+Web 端与 Android 壳的核心链路已完成（Android 壳 0.2.11）；后续主要是发布、兼容性打磨与离线能力。详见 [`docs/ROADMAP.md`](./docs/ROADMAP.md)。
 
 ## 参与贡献
 

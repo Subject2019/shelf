@@ -1,3 +1,4 @@
+import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef } from "react";
 import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
 
@@ -44,12 +45,19 @@ export default function AppShell() {
   const bootstrap = useAuth((state) => state.bootstrap);
   const hasPlayer = usePlayer((state) => Boolean(state.book));
   const started = useRef(false);
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     if (started.current) return;
     started.current = true;
     void bootstrap();
   }, [bootstrap]);
+
+  // 登录/重新登录完成后先重拉书架与详情，避免继续使用上一会话的旧进度。
+  useEffect(() => {
+    if (status !== "authenticated") return;
+    void queryClient.invalidateQueries();
+  }, [status, queryClient]);
 
   // 登录态确定 = 首屏路由已渲染、可交互；此时让启动屏退场。
   // bootstrap 内部任何失败都会收敛成 anonymous，因此这里必定会执行，不会卡在启动屏。
