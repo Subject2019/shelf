@@ -1,4 +1,12 @@
-# 声架 shelf
+<p align="center">
+  <img src="./assets/shelf-logo.png" width="120" alt="声架 shelf logo" />
+</p>
+
+<h1 align="center">声架 shelf</h1>
+
+<p align="center">
+  <strong>把有声书搬回自己的书架</strong>
+</p>
 
 <p align="center">
   <a href="https://github.com/Subject2019/shelf/releases/latest"><img alt="release" src="https://img.shields.io/github/v/release/Subject2019/shelf?style=flat-square&label=release&cacheSeconds=300" /></a>
@@ -9,7 +17,7 @@
   <a href="./LICENSE"><img alt="license" src="https://img.shields.io/badge/license-MIT-2ea44f?style=flat-square" /></a>
 </p>
 
-> 自托管有声书服务器 · 原 EchoShelf · 声架
+> 自托管有声书服务器 · 声架
 
 在 NAS 上用 Docker 跑一个容器，用浏览器、安卓 App 或飞牛客户端听书，进度多端互通。轻量、单容器、SQLite，不需要 Postgres / Redis。
 
