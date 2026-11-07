@@ -142,3 +142,6 @@ android-pwa/.kotlin/
 # 飞牛 fpk 构建产物（不提交）
 /fnos/*.fpk
 /fnos/*.fpk.sha256
+
+# 本机推广文案，不随仓库分发
+/fnos-forum-post.md
