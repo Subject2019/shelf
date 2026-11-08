@@ -165,7 +165,8 @@ shelf 是一个面向 NAS 的自托管有声书服务器。把有声书目录挂
 |---|---|---|
 | **Android APK** | 手机上听书，连接已有 shelf 服务端 | [下载 `shelf-0.2.11.apk`](https://github.com/Subject2019/shelf/releases/download/v0.2.11/shelf-0.2.11.apk) |
 | **飞牛 fnOS fpk（Docker 版）** | 飞牛 NAS 一键安装，包含服务端 | [下载 `shelf-docker-0.2.11-1-fnos.fpk`](https://github.com/Subject2019/shelf/releases/download/v0.2.11/shelf-docker-0.2.11-1-fnos.fpk) |
-| **飞牛 fnOS fpk（原生版）** | 飞牛 NAS，不使用 Docker | [下载 `shelf-native-0.2.11-1-fnos.fpk`](https://github.com/Subject2019/shelf/releases/download/v0.2.11/shelf-native-0.2.11-1-fnos.fpk) |
+| **飞牛 fnOS fpk（原生 x86_64）** | x86_64 飞牛，不使用 Docker | [下载 `shelf-native-0.2.11-1-fnos.fpk`](https://github.com/Subject2019/shelf/releases/download/v0.2.11/shelf-native-0.2.11-1-fnos.fpk) |
+| **飞牛 fnOS fpk（原生 ARM64）** | ARM64 飞牛，不使用 Docker | [下载 `shelf-native-0.2.11-1-arm-fnos.fpk`](https://github.com/Subject2019/shelf/releases/download/v0.2.11/shelf-native-0.2.11-1-arm-fnos.fpk) |
 | **Docker 镜像** | 群晖 / 威联通 / Unraid / Linux 等 | `ghcr.io/subject2019/shelf:0.2.11`，见下方 Docker 章节 |
 
 > Android APK 只是客户端，需要连接一个正在运行的 shelf 服务端；飞牛 fpk 和 Docker 镜像都包含服务端。
@@ -313,11 +314,16 @@ cd android-pwa
 
 ### 飞牛 fnOS 原生 fpk（不使用 Docker）
 
-原生版使用 `shelf-native-0.2.11-1-fnos.fpk`，应用名 `shelfnative`，可以和 Docker 版同时安装。
+原生版按 CPU 架构分为两个包，应用名都是 `shelfnative`，可以和 Docker 版同时安装：
 
-- 仅支持 `x86_64`；
+| 架构 | 文件 | 说明 |
+|---|---|---|
+| x86_64 | `shelf-native-0.2.11-1-fnos.fpk` | 适用于常见 x86_64 飞牛设备 |
+| ARM64 | `shelf-native-0.2.11-1-arm-fnos.fpk` | 适用于 ARM64 飞牛设备，不使用 Docker |
+
 - 只声明一个应用依赖：`python312`；
-- Python 依赖已经打进 venv，不需要用户再执行 `pip install`；
+- Python 依赖已经打进包内，不需要用户再执行 `pip install`；
+- ARM64 包复用飞牛 ARM 版 `python312`，包内依赖是 ARM64 wheel；
 - `ffmpeg` / `ffprobe` 使用飞牛系统自带版本，不额外安装应用；
 - 默认访问端口 `18081`；
 - 安装时填写管理员账号和密码，以及可选的有声书目录；

@@ -7,17 +7,19 @@
 | 文件 | 当前大小 | 是什么 | 怎么用 |
 |---|---|---|---|
 | `shelf-docker-0.2.11-1-fnos.fpk` | 24 KB | 飞牛 **Docker 部署版** fpk，内置 Compose 配置 | 飞牛应用中心手动安装 |
-| `shelf-native-0.2.11-1-fnos.fpk` | 21 MB | 飞牛 **原生部署版** fpk，自带 Python venv，不使用 Docker | 飞牛应用中心手动安装 |
+| `shelf-native-0.2.11-1-fnos.fpk` | 21 MB | 飞牛 **原生部署版（x86_64）** fpk，自带 Python venv，不使用 Docker | 飞牛应用中心手动安装 |
+| `shelf-native-0.2.11-1-arm-fnos.fpk` | 20 MB | 飞牛 **原生部署版（ARM64）** fpk，复用 ARM 版 `python312`，不使用 Docker | ARM64 飞牛应用中心手动安装 |
 | `shelf-0.2.11.apk` | 3.1 MB | Android WebView 壳 **release 签名**包 | `adb install -r` 或直接安装 |
 | `shelf-0.2.11-linux-amd64-bare.tar.gz` | 302 KB | 常规部署包：后端源码 + 预构建前端 + `install.sh` | 解压后 `sudo ./install.sh` |
 | `*.sha256` | 约 100 B | 上面每个包的校验值 | `sha256sum -c xxx.sha256` |
 
 > `release/` 只保留当前最新版本；旧版本 fpk/APK 不在这里堆积。
 >
-> 两个飞牛 fpk 使用同一个版本号 `0.2.11-1`，但安装方式不同，**同时保留**：
+> 三个飞牛 fpk 使用同一个版本号 `0.2.11-1`，但安装方式和架构不同，**同时保留**：
 >
-> - `shelf-docker-0.2.11-1-fnos.fpk`：应用名 `shelf`，依赖飞牛 Docker，默认端口 `8080`；
-> - `shelf-native-0.2.11-1-fnos.fpk`：应用名 `shelfnative`，依赖 `python312`，复用系统 `ffmpeg`，默认端口 `18081`。
+> - `shelf-docker-0.2.11-1-fnos.fpk`：应用名 `shelf`，依赖飞牛 Docker，默认端口 `8080`，仅 x86_64；
+> - `shelf-native-0.2.11-1-fnos.fpk`：应用名 `shelfnative`，依赖 `python312`，复用系统 `ffmpeg`，默认端口 `18081`，仅 x86_64；
+> - `shelf-native-0.2.11-1-arm-fnos.fpk`：应用名 `shelfnative`，依赖 ARM 版 `python312`，复用系统 `ffmpeg`，默认端口 `18081`，仅 ARM64。
 
 ## 飞牛 fpk 安装
 
@@ -28,12 +30,19 @@ Docker 版：
 3. 安装向导填写端口、管理员账号密码和可选媒体目录；
 4. 「设置 → 书库」填容器内路径 `/audiobooks` 或其子目录。
 
-原生版：
+原生 x86_64 版：
 
 1. 飞牛应用中心选择「手动安装」；
 2. 上传 `shelf-native-0.2.11-1-fnos.fpk`；
 3. 安装向导填写端口、管理员账号密码和可选媒体目录；
 4. 「设置 → 书库」填安装时选择的实际目录，例如 `/vol1/@appshare/shelfnative/media`，不要填 `/audiobooks`。
+
+原生 ARM64 版：
+
+1. 确认 `uname -m` 为 `aarch64`；
+2. 飞牛应用中心选择「手动安装」，上传 `shelf-native-0.2.11-1-arm-fnos.fpk`；
+3. 安装向导填写端口、管理员账号密码和可选媒体目录；
+4. ARM 包复用飞牛 ARM 版 `python312`，不需要 Docker，也不要使用 Docker 版 fpk。
 
 ## Android APK 怎么用
 
