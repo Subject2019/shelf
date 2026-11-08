@@ -6,36 +6,36 @@
 
 | 文件 | 当前大小 | 是什么 | 怎么用 |
 |---|---|---|---|
-| `shelf-0.2.11-linux-amd64-bare.tar.gz` | 302 KB | 常规部署包：后端源码 + 预构建前端 + `install.sh` | 解压后 `sudo ./install.sh` |
 | `shelf-docker-0.2.11-1-fnos.fpk` | 24 KB | 飞牛 **Docker 部署版** fpk，内置 Compose 配置 | 飞牛应用中心手动安装 |
 | `shelf-native-0.2.11-1-fnos.fpk` | 21 MB | 飞牛 **原生部署版** fpk，自带 Python venv，不使用 Docker | 飞牛应用中心手动安装 |
 | `shelf-0.2.11.apk` | 3.1 MB | Android WebView 壳 **release 签名**包 | `adb install -r` 或直接安装 |
+| `shelf-0.2.11-linux-amd64-bare.tar.gz` | 302 KB | 常规部署包：后端源码 + 预构建前端 + `install.sh` | 解压后 `sudo ./install.sh` |
 | `*.sha256` | 约 100 B | 上面每个包的校验值 | `sha256sum -c xxx.sha256` |
 
 > `release/` 只保留当前最新版本；旧版本 fpk/APK 不在这里堆积。
 >
-> 两个飞牛 fpk 是两种不同安装方式，**同时保留**：Docker 版依赖飞牛 Docker，原生版依赖 `python312` 并复用系统 ffmpeg。
+> 两个飞牛 fpk 使用同一个版本号 `0.2.11-1`，但安装方式不同，**同时保留**：
+>
+> - `shelf-docker-0.2.11-1-fnos.fpk`：应用名 `shelf`，依赖飞牛 Docker，默认端口 `8080`；
+> - `shelf-native-0.2.11-1-fnos.fpk`：应用名 `shelfnative`，依赖 `python312`，复用系统 `ffmpeg`，默认端口 `18081`。
 
-> ⚠️ `-docker.tar.gz` 里是 `blobs/` + `manifest.json`，这是 Docker 的镜像归档格式，
-> **不是**源码目录，也**不需要** Dockerfile。`docker load` 后镜像里已含前端静态资源与 ffmpeg。
+## 飞牛 fpk 安装
 
-### 离线镜像怎么用
+Docker 版：
 
-```bash
-sha256sum -c shelf-0.2.11-linux-amd64-docker.tar.gz.sha256
-docker load -i shelf-0.2.11-linux-amd64-docker.tar.gz
-docker images shelf            # 0.2.11 与 latest 两个 tag
+1. 飞牛应用中心选择「手动安装」；
+2. 上传 `shelf-docker-0.2.11-1-fnos.fpk`；
+3. 安装向导填写端口、管理员账号密码和可选媒体目录；
+4. 「设置 → 书库」填容器内路径 `/audiobooks` 或其子目录。
 
-# 方式一：compose（推荐，仓库里的 compose 已指向该镜像）
-docker compose up -d
+原生版：
 
-# 方式二：直接跑
-docker run -d --name shelf -p 8080:8080 \
-  -v /path/to/audiobooks:/audiobooks:ro -v /path/to/data:/data \
-  shelf:0.2.11
-```
+1. 飞牛应用中心选择「手动安装」；
+2. 上传 `shelf-native-0.2.11-1-fnos.fpk`；
+3. 安装向导填写端口、管理员账号密码和可选媒体目录；
+4. 「设置 → 书库」填安装时选择的实际目录，例如 `/vol1/@appshare/shelfnative/media`，不要填 `/audiobooks`。
 
-### Android APK 怎么用
+## Android APK 怎么用
 
 ```bash
 sha256sum -c shelf-0.2.11.apk.sha256
@@ -54,8 +54,11 @@ deploy/build-release.sh
 # 只打包、复用已有 web/dist
 deploy/build-release.sh --skip-web
 
-# 连 Docker 镜像一起打（构建较慢，放在最后做）
-deploy/build-release.sh --docker
+# Docker 版 fpk
+cd fnos
+fnpack build
+
+# 原生版 fpk 使用独立构建目录，产物同样复制到 release/
 ```
 
 脚本会自动把 `android-pwa/app/build/outputs/apk/release/app-release.apk` 复制为 `shelf-<版本>.apk` 并生成校验；如果 APK 不存在则跳过。release 签名读取本地 `android-pwa/keystore.properties` 与 `release.keystore`（均不提交），请务必备份密钥。
@@ -64,7 +67,7 @@ deploy/build-release.sh --docker
 
 ## 常规包结构
 
-```
+```text
 shelf-0.2.11-linux-amd64/
 ├── VERSION
 ├── MANIFEST.txt          # 文件清单 + sha256
