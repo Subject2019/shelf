@@ -7,7 +7,8 @@ from pydantic import BaseModel, Field
 
 class LibraryCreate(BaseModel):
     name: str = Field(min_length=1, max_length=128)
-    # Docker 部署时容器内固定挂载点为 /audiobooks；允许其子目录用于多书库
+    # Docker 默认根目录为 /audiobooks，原生安装为安装时选择的有声书目录；
+    # 允许子目录用于拆分多书库。
     root_path: str = Field(min_length=1, max_length=1024)
     user_ids: list[int] = Field(default_factory=list)
 

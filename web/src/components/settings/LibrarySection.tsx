@@ -236,7 +236,7 @@ export default function LibrarySection() {
         <div>
           <h2 className="text-sm font-semibold">书库</h2>
           <p className="mt-1 text-xs text-zinc-500">
-            登记容器内的有声书目录，扫描后书籍才会出现在书架。
+            登记有声书目录，扫描后书籍才会出现在书架。
           </p>
         </div>
         <button
@@ -260,18 +260,31 @@ export default function LibrarySection() {
           <input
             value={rootPath}
             onChange={(event) => setRootPath(event.target.value)}
-            placeholder="容器内目录，例如 /audiobooks"
+            placeholder="有声书目录，例如 /audiobooks 或 /vol1/@appshare/shelfnative/media"
             className={fieldClass}
           />
-          <p className="text-[11px] leading-relaxed text-zinc-500">
-            Docker 部署时，宿主机的有声书目录已在创建容器时固定挂载到{" "}
-            <code className="rounded bg-zinc-100 px-1 dark:bg-white/10">{DEFAULT_ROOT_PATH}</code>
-            。这里填写容器内路径：默认为整个挂载目录；填写{" "}
-            <code className="rounded bg-zinc-100 px-1 dark:bg-white/10">
-              {DEFAULT_ROOT_PATH}/子目录
-            </code>{" "}
-            可单独登记子书库。裸机部署请改成实际目录。
-          </p>
+          <div className="space-y-1 text-[11px] leading-relaxed text-zinc-500">
+            <p>
+              <strong className="font-medium text-zinc-700 dark:text-zinc-300">Docker 安装：</strong>
+              填容器内路径{" "}
+              <code className="rounded bg-zinc-100 px-1 dark:bg-white/10">{DEFAULT_ROOT_PATH}</code>
+              ，或它的子目录（例如{" "}
+              <code className="rounded bg-zinc-100 px-1 dark:bg-white/10">
+                {DEFAULT_ROOT_PATH}/小说
+              </code>
+              ）；不要填宿主机路径。
+            </p>
+            <p>
+              <strong className="font-medium text-zinc-700 dark:text-zinc-300">fnOS 原生安装：</strong>
+              填安装时设置的实际有声书目录，例如{" "}
+              <code className="rounded bg-zinc-100 px-1 dark:bg-white/10">
+                /vol1/@appshare/shelfnative/media
+              </code>
+              ，或它的子目录；不要填{" "}
+              <code className="rounded bg-zinc-100 px-1 dark:bg-white/10">{DEFAULT_ROOT_PATH}</code>
+              。实际存储空间不是 vol1 时，以飞牛文件管理器里的路径为准。
+            </p>
+          </div>
           {formError && <p className="text-[11px] text-rose-500">{formError}</p>}
           <div className="flex justify-end gap-2">
             <button

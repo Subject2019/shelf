@@ -36,8 +36,8 @@ router = APIRouter(tags=["libraries"])
 _scan_trigger_lock = threading.Lock()
 
 
-def _container_audiobooks_root() -> Path | None:
-    """Docker 镜像只挂载一个固定媒体根目录，书库不能跳出该目录。"""
+def _audiobooks_root() -> Path | None:
+    """服务端只允许登记有声书根目录下的路径，避免书库越界。"""
     if os.environ.get("ECHOSHELF_CONTAINER") != "1":
         return None
     return get_settings().audiobooks_path.expanduser().resolve()
@@ -113,29 +113,35 @@ def create_library(
     if not root_input.is_absolute():
         raise HTTPException(
             status_code=400,
-            detail="请填写容器内绝对路径，例如 /audiobooks 或 /audiobooks/小说",
+            detail="请填写有声书目录的绝对路径，例如 /audiobooks 或 /vol1/@appshare/shelfnative/media",
         )
     root = root_input.resolve()
 
-    container_root = _container_audiobooks_root()
-    if container_root is not None:
+    audiobooks_root = _audiobooks_root()
+    if audiobooks_root is not None:
         try:
-            root.relative_to(container_root)
+            root.relative_to(audiobooks_root)
         except ValueError:
             raise HTTPException(
                 status_code=400,
-                detail=f"书库路径必须位于容器内的有声书根目录 {container_root} 下；宿主机目录由 Docker 挂载决定",
+                detail=(
+                    f"书库路径必须位于有声书根目录 {audiobooks_root} 下；"
+                    "Docker 的根目录由挂载决定，原生安装的根目录由安装时选择"
+                ),
             ) from None
 
     if not root.is_dir():
         raise HTTPException(
             status_code=400,
-            detail="目录不存在或不是目录；Docker 部署请确认宿主机目录已挂载到 /audiobooks",
+            detail="目录不存在或不是目录；请确认有声书目录已挂载/存在",
         )
     if not os.access(root, os.R_OK | os.X_OK):
         raise HTTPException(
             status_code=400,
-            detail="目录存在，但容器当前用户无权读取；请检查宿主机目录权限（可 chmod -R a+rX，或调整 PUID/PGID 后重启容器）",
+            detail=(
+                "目录存在，但应用当前用户无权读取；"
+                "Docker 请检查 PUID/PGID，原生安装请检查目录权限"
+            ),
         )
     normalized = str(root)
 

@@ -164,7 +164,8 @@ shelf 是一个面向 NAS 的自托管有声书服务器。把有声书目录挂
 | 安装包 | 适用场景 | 获取方式 |
 |---|---|---|
 | **Android APK** | 手机上听书，连接已有 shelf 服务端 | [下载 `shelf-0.2.11.apk`](https://github.com/Subject2019/shelf/releases/download/v0.2.11/shelf-0.2.11.apk) |
-| **飞牛 fnOS fpk** | 飞牛 NAS 一键安装，包含服务端 | [下载 `shelf-0.2.11-fnos.fpk`](https://github.com/Subject2019/shelf/releases/download/v0.2.11/shelf-0.2.11-fnos.fpk) |
+| **飞牛 fnOS fpk（Docker 版）** | 飞牛 NAS 一键安装，包含服务端 | [下载 `shelf-docker-0.2.11-1-fnos.fpk`](https://github.com/Subject2019/shelf/releases/download/v0.2.11/shelf-docker-0.2.11-1-fnos.fpk) |
+| **飞牛 fnOS fpk（原生版）** | 飞牛 NAS，不使用 Docker | [下载 `shelf-native-0.2.11-1-fnos.fpk`](https://github.com/Subject2019/shelf/releases/download/v0.2.11/shelf-native-0.2.11-1-fnos.fpk) |
 | **Docker 镜像** | 群晖 / 威联通 / Unraid / Linux 等 | `ghcr.io/subject2019/shelf:0.2.11`，见下方 Docker 章节 |
 
 > Android APK 只是客户端，需要连接一个正在运行的 shelf 服务端；飞牛 fpk 和 Docker 镜像都包含服务端。
@@ -198,7 +199,7 @@ docker run -d --name shelf \
   ghcr.io/subject2019/shelf:latest
 ```
 
-打开 `http://<NAS_IP>:8080`，用上面的管理员账号登录。
+打开 `http://<NAS_IP>:8080`，用上面的管理员账号登录。进入「设置 → 书库」登记时，Docker 安装填容器内路径 `/audiobooks` 或其子目录。
 
 > 数据目录必须放在本地盘，不要用 SMB / NFS；媒体目录以只读方式挂载。
 
@@ -286,19 +287,47 @@ cd android-pwa
 ### 飞牛 fnOS（fpk）
 
 <p>
-  <a href="https://github.com/Subject2019/shelf/releases/download/v0.2.11/shelf-0.2.11-fnos.fpk"><img alt="下载飞牛 fpk" src="https://img.shields.io/badge/下载-飞牛%20fnOS%200.2.11--1-1F7A5A?style=for-the-badge" /></a>
+  <a href="https://github.com/Subject2019/shelf/releases/download/v0.2.11/shelf-docker-0.2.11-1-fnos.fpk"><img alt="下载飞牛 Docker fpk" src="https://img.shields.io/badge/下载-飞牛%20Docker%200.2.11--1-1F7A5A?style=for-the-badge" /></a>
+  <a href="https://github.com/Subject2019/shelf/releases/download/v0.2.11/shelf-native-0.2.11-1-fnos.fpk"><img alt="下载飞牛原生 fpk" src="https://img.shields.io/badge/下载-飞牛%20原生%200.2.11--1-7C5CBF?style=for-the-badge" /></a>
 </p>
 
 `fpk` 是飞牛 NAS 的应用安装包，内置服务端镜像，不要求用户自己写 Compose。
 
 安装步骤：
 
-1. 在飞牛应用中心选择「手动安装」，上传 `shelf-0.2.11-fnos.fpk`；
+1. 在飞牛应用中心选择「手动安装」，上传 `shelf-docker-0.2.11-1-fnos.fpk`；
 2. 安装向导填写访问端口、管理员账号密码和是否启用转码；
 3. 有声书目录可留空使用共享目录 `shelf/media`，也可以填写飞牛上的已有目录；
-4. 安装完成后从桌面「声架」入口打开，进入「设置 → 书库」确认路径为容器内 `/audiobooks`。
+4. 安装完成后从桌面「声架」入口打开，进入「设置 → 书库」填写 `/audiobooks` 或其子目录。
 
 详细说明、目录结构和构建方式见 [`fnos/README.md`](./fnos/README.md)。
+
+### 书库路径怎么填
+
+| 安装方式 | 设置 → 书库填写 | 说明 |
+|---|---|---|
+| Docker 安装 | `/audiobooks` 或其子目录，例如 `/audiobooks/小说` | 宿主机目录在创建容器时已挂载到 `/audiobooks`，这里填容器内路径 |
+| fnOS 原生安装 | 安装时选择的有声书目录，例如 `/vol1/@appshare/shelfnative/media` 或其子目录 | 填飞牛上的实际路径，不是 `/audiobooks`；存储空间不是 vol1 时以文件管理器路径为准 |
+
+> 原生安装默认使用 `shelfnative/media` 共享目录。安装时如果填写了已有目录，书库页就填那个目录的实际路径。
+
+### 飞牛 fnOS 原生 fpk（不使用 Docker）
+
+原生版使用 `shelf-native-0.2.11-1-fnos.fpk`，应用名 `shelfnative`，可以和 Docker 版同时安装。
+
+- 仅支持 `x86_64`；
+- 只声明一个应用依赖：`python312`；
+- Python 依赖已经打进 venv，不需要用户再执行 `pip install`；
+- `ffmpeg` / `ffprobe` 使用飞牛系统自带版本，不额外安装应用；
+- 默认访问端口 `18081`；
+- 安装时填写管理员账号和密码，以及可选的有声书目录；
+- 安装完成后在「设置 → 书库」填写实际目录，例如 `/vol1/@appshare/shelfnative/media` 或安装时填写的自定义目录。
+
+```text
+依赖应用：python312
+系统命令：ffmpeg / ffprobe（飞牛自带）
+不需要：Docker、Node.js、PostgreSQL、Redis
+```
 
 ## 配置项
 

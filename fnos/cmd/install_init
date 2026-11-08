@@ -1,6 +1,34 @@
 #!/bin/bash
 set -u
 
+log() {
+    printf '%s\n' "$*" >&2
+    if [ -n "${TRIM_TEMP_LOGFILE:-}" ]; then
+        printf '%s\n' "$*" >> "$TRIM_TEMP_LOGFILE" 2>/dev/null || true
+    fi
+}
+
 # 安装文件解压前不读取向导变量，避免不同 fnOS 版本下取不到密码而中断安装。
-# 管理员凭据由 Compose 直接读取 wizard_* 环境变量。
+# 只做环境预检；管理员凭据仍由 Compose 读取 wizard_* 环境变量。
+
+arch="$(uname -m 2>/dev/null || true)"
+case "$arch" in
+    x86_64|amd64)
+        ;;
+    *)
+        log "声架当前安装包仅支持 x86_64，检测到架构：${arch:-unknown}。ARM 设备暂时无法安装。"
+        exit 1
+        ;;
+esac
+
+if ! command -v docker >/dev/null 2>&1; then
+    log "未找到 Docker。请先在飞牛应用中心安装并启动 Docker，再重新安装声架。"
+    exit 1
+fi
+
+if ! docker info >/dev/null 2>&1; then
+    log "Docker 服务未运行或当前用户无权限。请先在飞牛应用中心启动 Docker，再重新安装声架。"
+    exit 1
+fi
+
 exit 0

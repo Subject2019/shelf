@@ -1,17 +1,20 @@
 # release — 分发包输出目录
 
-存放「可以直接分发给别人」的构建产物，**不存源码**。所有内容由脚本生成，目录本身只保留本文件与 `.gitkeep`。
+存放「可以直接分发给别人」的最新构建产物，**不存源码**。目录本身只保留本文件、`.gitkeep` 和当前版本产物。
 
-## 产物命名
+## 当前产物
 
 | 文件 | 当前大小 | 是什么 | 怎么用 |
 |---|---|---|---|
-| `shelf-<版本>-linux-<架构>-bare.tar.gz` | 294 KB | 常规部署包：后端源码 + 预构建前端 + `install.sh` | 解压后 `sudo ./install.sh` |
-| `shelf-<版本>-linux-<架构>-docker.tar.gz` | 90 MB | **Docker 镜像本体**（`docker save` 的归档，gzip 压缩） | `docker load -i` 后 `docker compose up -d` |
-| `shelf-<版本>.apk` | 3.1 MB | Android WebView 壳 **release 签名**包 | `adb install -r` 或直接安装 |
-| `*.sha256` | 约 100 B | 上面三个包的校验值 | `sha256sum -c xxx.sha256` |
+| `shelf-0.2.11-linux-amd64-bare.tar.gz` | 302 KB | 常规部署包：后端源码 + 预构建前端 + `install.sh` | 解压后 `sudo ./install.sh` |
+| `shelf-docker-0.2.11-1-fnos.fpk` | 24 KB | 飞牛 **Docker 部署版** fpk，内置 Compose 配置 | 飞牛应用中心手动安装 |
+| `shelf-native-0.2.11-1-fnos.fpk` | 21 MB | 飞牛 **原生部署版** fpk，自带 Python venv，不使用 Docker | 飞牛应用中心手动安装 |
+| `shelf-0.2.11.apk` | 3.1 MB | Android WebView 壳 **release 签名**包 | `adb install -r` 或直接安装 |
+| `*.sha256` | 约 100 B | 上面每个包的校验值 | `sha256sum -c xxx.sha256` |
 
-示例：`shelf-0.2.11-linux-amd64-docker.tar.gz`
+> `release/` 只保留当前最新版本；旧版本 fpk/APK 不在这里堆积。
+>
+> 两个飞牛 fpk 是两种不同安装方式，**同时保留**：Docker 版依赖飞牛 Docker，原生版依赖 `python312` 并复用系统 ffmpeg。
 
 > ⚠️ `-docker.tar.gz` 里是 `blobs/` + `manifest.json`，这是 Docker 的镜像归档格式，
 > **不是**源码目录，也**不需要** Dockerfile。`docker load` 后镜像里已含前端静态资源与 ffmpeg。

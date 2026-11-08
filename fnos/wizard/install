@@ -10,8 +10,8 @@
         "type": "text",
         "field": "wizard_port",
         "label": "访问端口",
-        "initValue": "8080",
-        "helpText": "声架在飞牛上的访问端口，默认 8080；如果已被占用，可改成 8090、18080 等。",
+        "initValue": "18080",
+        "helpText": "声架在飞牛上的访问端口，默认 18080；如果已被占用，可改成 8090、18081 等。",
         "rules": [
           {
             "required": true,
