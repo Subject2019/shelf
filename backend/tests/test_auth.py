@@ -33,13 +33,17 @@ def clean_auth_tables(database):
 
 
 def _create_user(
-    username: str = "alice", password: str = PASSWORD, role: str = "admin"
+    username: str = "alice",
+    password: str = PASSWORD,
+    role: str = "admin",
+    passwordless: bool = False,
 ) -> None:
     session = get_session_factory()()
     session.add(
         User(
             username=username,
-            password_hash=hash_password(password),
+            password_hash="" if passwordless else hash_password(password),
+            passwordless=passwordless,
             display_name=username,
             role=role,
             created_at=now_ts(),
@@ -134,6 +138,73 @@ def test_login_wrong_password(client) -> None:
     response = _login(client, password="wrong-password")
     assert response.status_code == 401
     assert response.json()["error"]["code"] == "unauthorized"
+
+
+def test_passwordless_listener_can_login_without_password(client) -> None:
+    _create_user(username="guest", role="listener", passwordless=True)
+
+    response = client.post(
+        "/api/v1/auth/login",
+        json={"username": "guest", "password": "", "device": DEVICE},
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["user"]["role"] == "listener"
+
+
+def test_passwordless_user_must_be_listener(client) -> None:
+    _create_user(username="guest-admin", role="admin", passwordless=True)
+
+    response = client.post(
+        "/api/v1/auth/login",
+        json={"username": "guest-admin", "password": ""},
+    )
+    assert response.status_code == 403
+
+
+def test_default_listener_requires_exactly_one_passwordless_listener(client) -> None:
+    response = client.get("/api/v1/auth/default-listener")
+    assert response.status_code == 200
+    assert response.json() is None
+
+    _create_user(username="guest1", role="listener", passwordless=True)
+    response = client.get("/api/v1/auth/default-listener")
+    assert response.status_code == 200
+    assert response.json()["username"] == "guest1"
+
+    _create_user(username="guest2", role="listener", passwordless=True)
+    response = client.get("/api/v1/auth/default-listener")
+    assert response.status_code == 200
+    assert response.json() is None
+
+
+def test_passwordless_listener_list_returns_all_choices(client) -> None:
+    response = client.get("/api/v1/auth/passwordless-listeners")
+    assert response.status_code == 200
+    assert response.json() == {"items": []}
+
+    _create_user(username="guest1", role="listener", passwordless=True)
+    _create_user(username="guest2", role="listener", passwordless=True)
+    response = client.get("/api/v1/auth/passwordless-listeners")
+    assert response.status_code == 200
+    assert [item["username"] for item in response.json()["items"]] == [
+        "guest1",
+        "guest2",
+    ]
+
+
+def test_default_listener_ignores_disabled_and_non_listener(client) -> None:
+    _create_user(username="disabled", role="listener", passwordless=True)
+    session = get_session_factory()()
+    user = session.query(User).filter(User.username == "disabled").one()
+    user.is_active = False
+    session.commit()
+    session.close()
+
+    _create_user(username="guest-admin", role="admin", passwordless=True)
+    response = client.get("/api/v1/auth/default-listener")
+    assert response.status_code == 200
+    assert response.json() is None
 
 
 def test_me_requires_token(client) -> None:

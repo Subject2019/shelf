@@ -61,6 +61,7 @@ export interface User {
 /** 管理员视角的用户（多出启用状态与最近登录）。 */
 export interface UserAdmin extends User {
   is_active: boolean;
+  passwordless: boolean;
   last_login_at: number | null;
 }
 
@@ -73,7 +74,8 @@ export interface UserAdminList {
 
 export interface UserCreatePayload {
   username: string;
-  password: string;
+  password?: string;
+  passwordless?: boolean;
   display_name?: string | null;
   role?: Exclude<UserRole, "admin">;
   library_ids?: number[];
@@ -84,6 +86,7 @@ export interface UserUpdatePayload {
   role?: Exclude<UserRole, "admin">;
   is_active?: boolean;
   password?: string;
+  passwordless?: boolean;
   library_ids?: number[];
 }
 
@@ -114,6 +117,15 @@ export interface TokenResponse {
   refresh_token: string;
   expires_in: number;
   user: User;
+}
+
+export interface DefaultListener {
+  username: string;
+  display_name: string | null;
+}
+
+export interface PasswordlessListenerList {
+  items: DefaultListener[];
 }
 
 export interface ScanBrief {

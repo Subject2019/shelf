@@ -1,4 +1,4 @@
-# EchoShelf HTTP API 契约（v0.2.11）
+# EchoShelf HTTP API 契约（v0.2.12）
 
 > 面向 WebUI、安卓 App 与第三方客户端。本文件与代码同步维护，**以服务端实现为准**。
 > 机器可读契约：`GET /api/openapi.json`，交互式文档：`GET /api/docs`。
@@ -80,6 +80,8 @@ Swagger UI GET /api/docs
 |---|---|---|---|
 | | POST | `/auth/register` | 公开（受开关控制） |
 | | POST | `/auth/login` | 公开 |
+| | GET | `/auth/passwordless-listeners` | 公开 |
+| | GET | `/auth/default-listener` | 公开 |
 | | POST | `/auth/refresh` | 公开 |
 | | POST | `/auth/logout` | 公开 |
 | | GET | `/me` | 登录 |
@@ -195,12 +197,13 @@ sudo -u echoshelf /opt/echoshelf/bin/echoshelf admin create
 ```json
 { "username": "admin", "password": "******",
   "device": { "id": "android-abc123", "name": "Pixel 8", "platform": "android",
-              "app_version": "0.2.11", "os": "Android 14",
+              "app_version": "0.2.12", "os": "Android 14",
               "form_factor": "phone", "screen": "1080×2400 · 2.6x",
               "user_agent": "Mozilla/5.0 (Linux; Android 14; Pixel 8) …" } }
 ```
 
 `device` 可省略；带上后会登记到设备列表，并让进度按设备区分。
+免密听众的 `password` 可以留空；普通账号仍必须提供正确密码。
 同一用户名连续失败 5 次会短暂返回 429。
 
 `200` → `TokenResponse`：
@@ -210,6 +213,31 @@ sudo -u echoshelf /opt/echoshelf/bin/echoshelf admin create
   "user": { "id": 1, "username": "admin", "display_name": "管理员",
             "role": "admin", "libraries": [1], "created_at": 1792772955 } }
 ```
+
+### GET /auth/passwordless-listeners
+
+公开接口，返回登录页可选择的免密 listener：
+
+```json
+{ "items": [
+  { "username": "guest", "display_name": "访客" },
+  { "username": "family", "display_name": "家人" }
+] }
+```
+
+没有可用免密账号时返回 `{"items": []}`。前端在登录页用户名位置展示这个列表；
+只有一个账号时仍会自动登录，多个账号时要求访问者选择。
+
+### GET /auth/default-listener
+
+公开接口，用于登录页自动登录。当前实例只有一个**启用中的免密 listener** 时返回：
+
+```json
+{ "username": "guest", "display_name": "访客" }
+```
+
+没有免密听众、存在多个免密听众，或唯一免密账号不是 listener 时返回 `null`。
+前端只会在没有 refresh token 且当前标签页未主动退出时调用它。
 
 ### POST /auth/refresh
 
@@ -837,8 +865,9 @@ WebUI 已按此实现（`web/src/store/player.ts` 的 `syncFromServer()` +
 
 ```json
 { "items": [ { "id": 1, "username": "demo", "display_name": "demo",
-               "role": "admin", "is_active": true, "libraries": [1],
-               "created_at": 1792772955, "last_login_at": 1792872329 } ],
+               "role": "admin", "is_active": true, "passwordless": false,
+               "libraries": [1], "created_at": 1792772955,
+               "last_login_at": 1792872329 } ],
   "total": 2, "page": 1, "page_size": 50 }
 ```
 
@@ -847,9 +876,12 @@ WebUI 已按此实现（`web/src/store/player.ts` 的 `syncFromServer()` +
 ### POST /users
 
 ```json
-{ "username": "alice", "password": "至少8位", "display_name": "Alice",
+{ "username": "guest", "passwordless": true, "display_name": "访客",
   "role": "listener", "library_ids": [1] }
 ```
+
+普通账号仍然传 `password`（至少 8 位）。`passwordless=true` 时不能同时传密码，
+且 `role` 只能是 `listener`；否则返回 400。
 
 `201` → `UserAdminOut`。用户名统一转小写，重复返回 409。
 
@@ -866,8 +898,12 @@ WebUI 已按此实现（`web/src/store/player.ts` 的 `syncFromServer()` +
 |---|---|
 | `library_ids` | 整体替换该用户的授权集合，`[]` 表示取消单独授权（公开库仍可见） |
 | `is_active=false` | 停用账号：立即吊销其所有 refresh token，旧 access token 也立即 401 |
-| `password` | 重置密码：旧会话全部失效，新密码立即可用 |
-| `role` | 改角色：`admin` / `editor` / `listener` |
+| `password` | 重置密码：旧会话全部失效，同时关闭免密 |
+| `passwordless=true` | 仅 listener 可用；清空密码，允许用户名直接登录 |
+| `passwordless=false` | 必须同时传 `password`，恢复密码登录 |
+| `role` | 改角色：`admin` / `editor` / `listener`；免密账号不能改成上传者 |
+
+> 免密账号的安全性依赖用户名不被公开。建议只授予只读书库，并在 fnConnect 暴露到公网时谨慎使用。
 
 保护规则（409）：不能修改自己的角色、不能停用/删除自己、不能把最后一个可用管理员降级或停用。
 
@@ -894,7 +930,7 @@ WebUI 已按此实现（`web/src/store/player.ts` 的 `syncFromServer()` +
 
 ```json
 { "items": [ { "id": "web-dymrmm7k", "user_id": 1, "username": "demo",
-               "name": "Chrome 141", "platform": "web", "app_version": "0.2.11",
+               "name": "Chrome 141", "platform": "web", "app_version": "0.2.12",
                "os": "Android 14", "form_factor": "phone", "screen": "390×844 · 3x",
                "user_agent": "Mozilla/5.0 (Linux; Android 14; Pixel 8) … Chrome/141.0.0.0 Mobile Safari/537.36",
                "created_at": 1792852192, "last_seen_at": 1792872329,
@@ -965,7 +1001,7 @@ WebUI 已按此实现（`web/src/store/player.ts` 的 `syncFromServer()` +
 ### GET /health（公开）
 
 ```json
-{ "status": "ok", "version": "0.2.11", "db": "ok", "ffmpeg": true,
+{ "status": "ok", "version": "0.2.12", "db": "ok", "ffmpeg": true,
   "libraries": 1, "books": 4, "uptime_sec": 505,
   "transcode": { "enabled": true, "active": 1, "completed": 12 } }
 ```

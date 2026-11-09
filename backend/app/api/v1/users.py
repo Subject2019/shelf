@@ -29,6 +29,7 @@ def _to_out(db: Session, user: User) -> UserAdminOut:
         display_name=user.display_name,
         role=user.role,
         is_active=user.is_active,
+        passwordless=user.passwordless,
         libraries=visible_library_ids(db, user),
         created_at=user.created_at,
         last_login_at=user.last_login_at,
@@ -126,9 +127,25 @@ def create_user(
     if exists:
         raise HTTPException(status_code=409, detail="用户名已存在")
 
+    if payload.passwordless:
+        if payload.role != "listener":
+            raise HTTPException(
+                status_code=400, detail="免密账号只能创建为听众，不能是上传者"
+            )
+        if payload.password:
+            raise HTTPException(
+                status_code=400, detail="免密账号不能同时设置密码"
+            )
+        password_hash = ""
+    else:
+        if not payload.password:
+            raise HTTPException(status_code=400, detail="请设置初始密码，或选择免密听众")
+        password_hash = hash_password(payload.password)
+
     user = User(
         username=username,
-        password_hash=hash_password(payload.password),
+        password_hash=password_hash,
+        passwordless=payload.passwordless,
         display_name=payload.display_name,
         role=payload.role,
         is_active=True,
@@ -152,6 +169,23 @@ def update_user(
 ) -> UserAdminOut:
     user = _get_user(db, user_id)
     protected = user.id == admin.id
+    effective_role = payload.role if payload.role is not None else user.role
+
+    if user.passwordless and effective_role != "listener":
+        raise HTTPException(
+            status_code=400, detail="免密账号只能作为听众；请先设置密码再修改角色"
+        )
+    if payload.passwordless is True:
+        if effective_role != "listener":
+            raise HTTPException(
+                status_code=400, detail="免密账号只能作为听众，不能是上传者或管理员"
+            )
+        if payload.password is not None:
+            raise HTTPException(
+                status_code=400, detail="免密账号不能同时设置密码"
+            )
+    if payload.passwordless is False and payload.password is None:
+        raise HTTPException(status_code=400, detail="关闭免密需要同时设置新密码")
 
     if payload.role is not None and payload.role != user.role:
         if protected:
@@ -176,8 +210,13 @@ def update_user(
 
     if payload.password is not None:
         user.password_hash = hash_password(payload.password)
+        user.passwordless = False
         # 改密后旧设备需要重新登录
         _revoke_tokens(db, user.id)
+
+    if payload.passwordless is True:
+        user.password_hash = ""
+        user.passwordless = True
 
     if payload.library_ids is not None:
         _set_libraries(db, user, payload.library_ids)

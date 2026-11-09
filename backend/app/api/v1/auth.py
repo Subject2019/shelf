@@ -22,9 +22,11 @@ from app.db.session import get_db
 from app.models import Device, RefreshToken, User
 from app.services.permissions import visible_library_ids
 from app.schemas.auth import (
+    DefaultListenerOut,
     DeviceIn,
     LoginRequest,
     PasswordChangeRequest,
+    PasswordlessListenerList,
     RefreshRequest,
     TokenResponse,
     UserOut,
@@ -119,17 +121,68 @@ def _issue_tokens(db: Session, user: User, device_id: str | None) -> TokenRespon
     )
 
 
+def _passwordless_listeners(db: Session) -> list[User]:
+    return list(
+        db.scalars(
+            select(User)
+            .where(
+                User.passwordless.is_(True),
+                User.is_active.is_(True),
+                User.role == "listener",
+            )
+            .order_by(User.id)
+        ).all()
+    )
+
+
+@router.get("/auth/passwordless-listeners", response_model=PasswordlessListenerList)
+def passwordless_listeners(
+    db: Session = Depends(get_db),
+) -> PasswordlessListenerList:
+    """登录页可选择的免密听众；没有或不可用时返回空列表。"""
+    return PasswordlessListenerList(
+        items=[
+            DefaultListenerOut(
+                username=user.username,
+                display_name=user.display_name,
+            )
+            for user in _passwordless_listeners(db)
+        ]
+    )
+
+
+@router.get("/auth/default-listener", response_model=DefaultListenerOut | None)
+def default_listener(db: Session = Depends(get_db)) -> DefaultListenerOut | None:
+    """只有一个可用免密听众时返回它，供登录页自动登录。
+
+    多个免密账号时返回 null，避免自动登录到不确定的人。
+    """
+    users = _passwordless_listeners(db)
+    if len(users) != 1:
+        return None
+    user = users[0]
+    return DefaultListenerOut(
+        username=user.username,
+        display_name=user.display_name,
+    )
+
+
 @router.post("/auth/login", response_model=TokenResponse)
 def login(payload: LoginRequest, db: Session = Depends(get_db)) -> TokenResponse:
     username = payload.username.strip().lower()
     _ensure_not_locked(username)
 
     user = db.scalar(select(User).where(User.username == username))
-    if (
-        user is None
-        or not user.is_active
-        or not verify_password(user.password_hash, payload.password)
-    ):
+    if user is None or not user.is_active:
+        _record_failure(username)
+        raise HTTPException(status_code=401, detail="用户名或密码错误")
+
+    if user.passwordless:
+        # 免密只允许听众，防止历史数据或误操作把上传者/管理员暴露出去。
+        if user.role != "listener":
+            _record_failure(username)
+            raise HTTPException(status_code=403, detail="该免密账号角色无效，请联系管理员")
+    elif not verify_password(user.password_hash, payload.password):
         _record_failure(username)
         raise HTTPException(status_code=401, detail="用户名或密码错误")
 
@@ -219,10 +272,14 @@ def change_password(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> Response:
-    if not verify_password(current_user.password_hash, payload.old_password):
+    if (
+        not current_user.passwordless
+        and not verify_password(current_user.password_hash, payload.old_password)
+    ):
         raise HTTPException(status_code=400, detail="原密码不正确")
 
     current_user.password_hash = hash_password(payload.new_password)
+    current_user.passwordless = False
     db.execute(
         update(RefreshToken)
         .where(

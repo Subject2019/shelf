@@ -14,7 +14,11 @@ class User(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     # 存小写，登录时先 lower() 再比对（docs/DATA_MODEL.md 2.1）
     username: Mapped[str] = mapped_column(Text, unique=True, nullable=False)
+    # 免密账号的 password_hash 留空，仅允许 listener 角色使用。
     password_hash: Mapped[str] = mapped_column(Text, nullable=False)
+    passwordless: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default="0"
+    )
     display_name: Mapped[str | None] = mapped_column(Text)
     # admin = 全部权限；editor = 可改资料/传封面，只能删自己传的封面；listener = 只读
     role: Mapped[str] = mapped_column(

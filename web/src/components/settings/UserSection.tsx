@@ -35,6 +35,7 @@ export default function UserSection() {
   const [creating, setCreating] = useState(false);
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [passwordless, setPasswordless] = useState(false);
   const [role, setRole] = useState<"editor" | "listener">("listener");
   const [createError, setCreateError] = useState<string | null>(null);
 
@@ -62,13 +63,15 @@ export default function UserSection() {
     mutationFn: () =>
       api.createUser({
         username: username.trim(),
-        password,
+        password: passwordless ? undefined : password,
+        passwordless,
         role,
       }),
     onSuccess: () => {
       setCreating(false);
       setUsername("");
       setPassword("");
+      setPasswordless(false);
       setRole("listener");
       setCreateError(null);
       invalidate();
@@ -132,6 +135,11 @@ export default function UserSection() {
               >
                 {(ROLE_META[user.role] ?? ROLE_META.listener).label}
               </span>
+              {user.passwordless && (
+                <span className="rounded-full bg-violet-500/10 px-1.5 py-0.5 text-[10px] text-violet-600 dark:text-violet-400">
+                  免密
+                </span>
+              )}
               {!user.is_active && (
                 <span className="rounded-full bg-rose-500/10 px-1.5 py-0.5 text-[10px] text-rose-500">
                   已停用
@@ -171,7 +179,9 @@ export default function UserSection() {
             </button>
             <select
               value={user.role}
-              disabled={isSelf || user.role === "admin" || updateMutation.isPending}
+              disabled={
+                isSelf || user.role === "admin" || user.passwordless || updateMutation.isPending
+              }
               onChange={(event) =>
                 updateMutation.mutate({
                   id: user.id,
@@ -179,7 +189,13 @@ export default function UserSection() {
                 })
               }
               aria-label="角色"
-              title={isSelf ? "不能修改自己的角色" : "角色"}
+              title={
+                isSelf
+                  ? "不能修改自己的角色"
+                  : user.passwordless
+                    ? "免密账号只能作为听众；重置密码后可改角色"
+                    : "角色"
+              }
               className="h-7 rounded-lg border border-zinc-200 bg-transparent px-1.5 text-[11px] text-zinc-600 outline-none transition focus:border-brand-500 disabled:opacity-40 dark:border-white/10 dark:text-zinc-300"
             >
               <option value="listener">听众</option>
@@ -342,9 +358,27 @@ export default function UserSection() {
             type="password"
             value={password}
             onChange={(event) => setPassword(event.target.value)}
-            placeholder="初始密码，至少 8 位"
-            className={fieldClass}
+            placeholder={passwordless ? "免密账号无需密码" : "初始密码，至少 8 位"}
+            disabled={passwordless}
+            className={`${fieldClass} disabled:cursor-not-allowed disabled:opacity-50`}
           />
+          <label className="flex items-start gap-2 rounded-lg border border-zinc-200/80 px-3 py-2 text-[11px] text-zinc-600 dark:border-white/10 dark:text-zinc-300">
+            <input
+              type="checkbox"
+              checked={passwordless}
+              onChange={(event) => {
+                setPasswordless(event.target.checked);
+                if (event.target.checked) setRole("listener");
+              }}
+              className="mt-0.5 accent-brand-500"
+            />
+            <span>
+              免密登录（仅听众）
+              <span className="mt-0.5 block text-zinc-500">
+                知道用户名的人可以直接进入，建议只授予只读书库。上传者和管理员不能免密。
+              </span>
+            </span>
+          </label>
           <div className="flex items-center gap-2">
             {(
               [
@@ -355,9 +389,10 @@ export default function UserSection() {
               <button
                 key={item.value}
                 type="button"
+                disabled={passwordless && item.value === "editor"}
                 onClick={() => setRole(item.value)}
                 className={[
-                  "rounded-full border px-3 py-1 text-xs transition",
+                  "rounded-full border px-3 py-1 text-xs transition disabled:cursor-not-allowed disabled:opacity-40",
                   role === item.value
                     ? "border-brand-500 bg-brand-500/10 text-brand-500"
                     : "border-zinc-200 text-zinc-600 dark:border-white/10 dark:text-zinc-400",
@@ -387,7 +422,7 @@ export default function UserSection() {
               onClick={() => createMutation.mutate()}
               disabled={
                 username.trim().length < 2 ||
-                password.length < 8 ||
+                (!passwordless && password.length < 8) ||
                 createMutation.isPending
               }
               className="rounded-lg bg-brand-500 px-3 py-1.5 text-xs font-medium text-ink-950 disabled:opacity-40"

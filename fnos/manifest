@@ -1,5 +1,5 @@
 appname               = shelf
-version               = 0.2.11-2
+version               = 0.2.12-1
 display_name          = 声架
 desc                  = <strong>声架（shelf）</strong> 是面向飞牛 NAS 的自托管有声书服务器。<br><br><strong>多端进度同步</strong>：同一账号在网页端与 Android App 之间自动同步播放位置，换设备打开同一本书即可从上次位置继续听，不需要手动记时间。<br><br><strong>核心功能</strong><br>• 自动扫描 NAS 书库，支持 M4B、MP3 等多格式与章节播放<br>• 收藏、收听统计、多用户与权限管理<br>• Android 原生后台播放、锁屏媒体控制<br><br><strong>在线体验</strong><br>地址：<a href="http://123.56.254.152">http://123.56.254.152</a><br>账号：shelf　密码：shelf2026<br>（公开演示账号，请勿存放隐私数据）<br><br><strong>界面预览</strong><br><img src="https://cdn.jsdelivr.net/gh/Subject2019/shelf-docker@main/assets/screenshots/02-desktop-library.png" width="720" alt="声架桌面书库"><br><img src="https://cdn.jsdelivr.net/gh/Subject2019/shelf-docker@main/assets/screenshots/04-desktop-player.png" width="720" alt="声架桌面播放器"><br><img src="https://cdn.jsdelivr.net/gh/Subject2019/shelf-docker@main/assets/screenshots/11-mobile-player.png" width="260" alt="声架手机播放器">
 platform              = x86

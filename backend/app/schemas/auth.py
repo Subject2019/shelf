@@ -19,7 +19,8 @@ class DeviceIn(BaseModel):
 
 class LoginRequest(BaseModel):
     username: str = Field(min_length=1, max_length=64)
-    password: str = Field(min_length=1, max_length=256)
+    # 免密听众可以留空；普通账号仍会在接口里校验密码。
+    password: str = Field(default="", max_length=256)
     device: DeviceIn | None = None
 
 
@@ -37,6 +38,19 @@ class TokenResponse(BaseModel):
     refresh_token: str
     expires_in: int
     user: UserOut
+
+
+class DefaultListenerOut(BaseModel):
+    """当前实例唯一可用免密听众，用于登录页自动登录。"""
+
+    username: str
+    display_name: str | None = None
+
+
+class PasswordlessListenerList(BaseModel):
+    """登录页可选的免密听众列表。"""
+
+    items: list[DefaultListenerOut]
 
 
 class RefreshRequest(BaseModel):

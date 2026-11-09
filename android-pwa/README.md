@@ -1,6 +1,6 @@
 # android-pwa — Android WebView 壳
 
-**状态：0.2.11（2026-11-07）**。包名 `com.shelf.pwa`，minSdk 24 / targetSdk 35，AGP 8.5.2 + Gradle 8.7 + Media3 1.3.1 + Java 17。
+**状态：0.2.12（2026-11-07）**。包名 `com.shelf.pwa`，minSdk 24 / targetSdk 35，AGP 8.5.2 + Gradle 8.7 + Media3 1.3.1 + Java 17。
 
 不内置 WebUI：启动后加载服务器上的 shelf 网页，界面、登录、书库全部复用 WebUI。音频播放由原生 Media3 前台服务接管，因此支持后台播放、状态栏/锁屏媒体控制和息屏续播。
 
@@ -92,7 +92,7 @@ cd android-pwa
 
 ## 排查
 
-- **没有媒体卡片/封面**：检查通知权限；确认 App 版本 0.2.11；确认前端包含 `ShelfPlayer` 适配层和进度上下文（开发 5173 或重建后的生产镜像）。
+- **没有媒体卡片/封面**：检查通知权限；确认 App 版本 0.2.12；确认前端包含 `ShelfPlayer` 适配层和进度上下文（开发 5173 或重建后的生产镜像）。
 - **状态栏有播放但按钮少**：Android 通知栏收起时最多显示 3 个动作，展开后才是完整 5 个；锁屏卡片由系统渲染，部分 ROM 会重排。
 - **图标被裁切**：自适应图标前景已限制在安全区；卸载重装或重启启动器/清除启动器缓存。
 - **播放失败**：看 logcat 标签 `ShelfNativePlayer`；确认 `stream_url` 可访问、token 未过期。

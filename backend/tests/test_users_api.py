@@ -186,6 +186,59 @@ def test_create_user_with_library_grant(client, users_env):
     )
 
 
+def test_create_passwordless_listener(client, users_env):
+    headers = _headers(client)
+    response = client.post(
+        "/api/v1/users",
+        headers=headers,
+        json={
+            "username": "guest",
+            "passwordless": True,
+            "role": "listener",
+            "library_ids": [users_env["lib_a"]],
+        },
+    )
+    assert response.status_code == 201, response.text
+    payload = response.json()
+    assert payload["passwordless"] is True
+    assert payload["libraries"] == [users_env["lib_a"]]
+
+    # 免密账号不需要密码，直接登录后仍是受书库限制的听众
+    login = _login(client, "guest", "")
+    assert login.status_code == 200
+    assert login.json()["user"]["role"] == "listener"
+
+
+def test_passwordless_editor_is_rejected(client, users_env):
+    response = client.post(
+        "/api/v1/users",
+        headers=_headers(client),
+        json={"username": "guest-editor", "passwordless": True, "role": "editor"},
+    )
+    assert response.status_code == 400
+
+
+def test_reset_password_disables_passwordless(client, users_env):
+    created = client.post(
+        "/api/v1/users",
+        headers=_headers(client),
+        json={"username": "guest2", "passwordless": True, "role": "listener"},
+    )
+    assert created.status_code == 201
+    user_id = created.json()["id"]
+
+    updated = client.patch(
+        f"/api/v1/users/{user_id}",
+        headers=_headers(client),
+        json={"password": "brandnew123"},
+    )
+    assert updated.status_code == 200
+    assert updated.json()["passwordless"] is False
+
+    assert _login(client, "guest2", "").status_code == 401
+    assert _login(client, "guest2", "brandnew123").status_code == 200
+
+
 def test_duplicate_username_conflicts(client, users_env):
     response = client.post(
         "/api/v1/users",

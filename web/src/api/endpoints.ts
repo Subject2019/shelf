@@ -13,6 +13,8 @@ import type {
   CollectionDetail,
   CollectionList,
   CollectionSummary,
+  DefaultListener,
+  PasswordlessListenerList,
   Device,
   DeviceList,
   Health,
@@ -82,6 +84,14 @@ function toQuery(params: BookQuery): string {
 
 export const api = {
   health: () => request<Health>("/health", { anonymous: true }),
+
+  defaultListener: () =>
+    request<DefaultListener | null>("/auth/default-listener", { anonymous: true }),
+
+  passwordlessListeners: () =>
+    request<PasswordlessListenerList>("/auth/passwordless-listeners", {
+      anonymous: true,
+    }),
 
   login: (username: string, password: string) =>
     request<TokenResponse>("/auth/login", {
