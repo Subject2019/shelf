@@ -1,6 +1,9 @@
-# 声架 · 飞牛 fnOS 应用
+# 声架 · 飞牛 fnOS Docker 应用（源码保留）
 
 声架（shelf）是面向飞牛 NAS 的自托管有声书服务器：自动扫描书库，支持 M4B/MP3 等多格式与章节播放、多端进度同步、收藏和收听统计，并可通过 Android App 原生后台播放。
+
+> **0.2.12 起飞牛 Release 不再发布 Docker 版 FPK**，本目录仅保留 Docker 应用的源码和构建说明。
+> 飞牛设备请安装原生 FPK（x86_64 / ARM64）；其他 Docker 环境可直接使用镜像 `ghcr.io/subject2019/shelf:0.2.12`。
 
 本目录基于现有镜像 `ghcr.io/subject2019/shelf:0.2.12` 构建飞牛 fnOS 应用包。
 

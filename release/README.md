@@ -6,7 +6,6 @@
 
 | 文件 | 当前大小 | 是什么 | 怎么用 |
 |---|---|---|---|
-| `shelf-docker-0.2.12-1-fnos.fpk` | 25 KB | 飞牛 **Docker 部署版** fpk，内置 Compose 配置 | 飞牛应用中心手动安装 |
 | `shelf-native-0.2.12-1-fnos.fpk` | 21 MB | 飞牛 **原生部署版（x86_64）** fpk，自带 Python venv，不使用 Docker | 飞牛应用中心手动安装 |
 | `shelf-native-0.2.12-1-arm-fnos.fpk` | 20 MB | 飞牛 **原生部署版（ARM64）** fpk，复用 ARM 版 `python312`，不使用 Docker | ARM64 飞牛应用中心手动安装 |
 | `shelf-0.2.12.apk` | 3.1 MB | Android WebView 壳 **release 签名**包 | `adb install -r` 或直接安装 |
@@ -15,20 +14,14 @@
 
 > `release/` 只保留当前最新版本；旧版本 fpk/APK 不在这里堆积。
 >
-> 三个飞牛 fpk 使用同一个版本号 `0.2.12-1`，但安装方式和架构不同，**同时保留**：
+> 两个飞牛原生 fpk 使用同一个版本号 `0.2.12-1`，按 CPU 架构区分，**同时保留**：
 >
-> - `shelf-docker-0.2.12-1-fnos.fpk`：应用名 `shelf`，依赖飞牛 Docker，默认端口 `18080`，仅 x86_64；
 > - `shelf-native-0.2.12-1-fnos.fpk`：应用名 `shelfnative`，依赖 `python312`，复用系统 `ffmpeg`，默认端口 `18081`，仅 x86_64；
 > - `shelf-native-0.2.12-1-arm-fnos.fpk`：应用名 `shelfnative`，依赖 ARM 版 `python312`，复用系统 `ffmpeg`，默认端口 `18081`，仅 ARM64。
+>
+> 0.2.12 起飞牛端不再发布 Docker FPK；Docker 部署请直接使用镜像 `ghcr.io/subject2019/shelf:0.2.12`。
 
 ## 飞牛 fpk 安装
-
-Docker 版：
-
-1. 飞牛应用中心选择「手动安装」；
-2. 上传 `shelf-docker-0.2.12-1-fnos.fpk`；
-3. 安装向导填写端口、管理员账号密码和可选媒体目录；
-4. 「设置 → 书库」填容器内路径 `/audiobooks` 或其子目录。
 
 原生 x86_64 版：
 
@@ -63,11 +56,8 @@ deploy/build-release.sh
 # 只打包、复用已有 web/dist
 deploy/build-release.sh --skip-web
 
-# Docker 版 fpk
-cd fnos
-fnpack build
-
-# 原生版 fpk 使用独立构建目录，产物同样复制到 release/
+# 原生版 fpk 使用独立构建目录，产物复制到 release/
+# 0.2.12 起飞牛 Release 不再发布 Docker FPK；Docker 部署直接使用镜像
 ```
 
 脚本会自动把 `android-pwa/app/build/outputs/apk/release/app-release.apk` 复制为 `shelf-<版本>.apk` 并生成校验；如果 APK 不存在则跳过。release 签名读取本地 `android-pwa/keystore.properties` 与 `release.keystore`（均不提交），请务必备份密钥。
