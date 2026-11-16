@@ -19,8 +19,8 @@ android {
         applicationId "com.shelf.pwa"
         minSdk 24
         targetSdk 35
-        versionCode 17
-        versionName "0.2.12"
+        versionCode 20
+        versionName "1.0.0"
     }
 
     signingConfigs {
@@ -51,6 +51,13 @@ android {
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
+    }
+
+    // 离线时 WebView 从 APK 内置的 web/dist 加载，不依赖服务器。
+    sourceSets {
+        main {
+            assets.srcDirs += ["${rootProject.projectDir}/../web/dist"]
+        }
     }
 }
 

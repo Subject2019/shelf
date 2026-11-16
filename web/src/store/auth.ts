@@ -24,6 +24,7 @@ interface AuthState {
   login: (username: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   bootstrap: () => Promise<void>;
+  enterOffline: () => void;
 }
 
 export const useAuth = create<AuthState>((set, get) => ({
@@ -66,6 +67,20 @@ export const useAuth = create<AuthState>((set, get) => ({
     } catch {
       set({ status: "anonymous", user: null });
     }
+  },
+
+  enterOffline() {
+    set({
+      user: {
+        id: 0,
+        username: "offline",
+        display_name: "离线用户",
+        role: "listener",
+        libraries: [1],
+        created_at: 0,
+      },
+      status: "authenticated",
+    });
   },
 
   async login(username: string, password: string) {

@@ -12,7 +12,7 @@ from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 APP_NAME = "shelf"
-APP_VERSION = "0.2.12"
+APP_VERSION = "1.0.0"
 APP_AUTHOR = "subject"
 
 # 源码布局下指向项目根；容器内 /app/app/core/config.py 解析为 /，即 /data 与 /audiobooks。
@@ -108,6 +108,10 @@ class Settings(BaseSettings):
     # access token 30 分钟、refresh token 30 天（见 docs/ARCHITECTURE.md §3.4）
     access_token_ttl_sec: int = 1800
     refresh_token_ttl_sec: int = 30 * 24 * 3600
+    # 离线下载票据：只允许读取单本书的章节音频，避免原生下载器长期持有 refresh token。
+    download_token_ttl_sec: int = Field(
+        default=12 * 3600, validation_alias=AliasChoices("ECHOSHELF_DOWNLOAD_TOKEN_TTL_SEC")
+    )
     # 小于该体积的音频视为残留/广告（docs/AUDIO_FORMATS.md §4）
     scan_min_size_bytes: int = Field(
         default=100 * 1024,

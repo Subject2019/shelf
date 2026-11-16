@@ -2,19 +2,19 @@
 
 声架（shelf）是面向飞牛 NAS 的自托管有声书服务器：自动扫描书库，支持 M4B/MP3 等多格式与章节播放、多端进度同步、收藏和收听统计，并可通过 Android App 原生后台播放。
 
-> **0.2.12 起飞牛 Release 不再发布 Docker 版 FPK**，本目录仅保留 Docker 应用的源码和构建说明。
-> 飞牛设备请安装原生 FPK（x86_64 / ARM64）；其他 Docker 环境可直接使用镜像 `ghcr.io/subject2019/shelf:0.2.12`。
+> **1.0.0 起飞牛 Release 不再发布 Docker 版 FPK**，本目录仅保留 Docker 应用的源码和构建说明。
+> 飞牛设备请安装原生 FPK（x86_64 / ARM64）；其他 Docker 环境可直接使用镜像 `ghcr.io/subject2019/shelf:1.0.0`。
 
-本目录基于现有镜像 `ghcr.io/subject2019/shelf:0.2.12` 构建飞牛 fnOS 应用包。
+本目录基于现有镜像 `ghcr.io/subject2019/shelf:1.0.0` 构建飞牛 fnOS 应用包。
 
 - 应用名：`shelf`
 - 显示名称：**声架**
-- 应用包版本：`0.2.12-1`（运行镜像为 `0.2.12`）
+- 应用包版本：`1.0.0-1`（运行镜像为 `1.0.0`）
 - 架构：`x86`（当前镜像只有 `linux/amd64`）
 - 容器名：`shelf-fnos`
 - 默认端口：`18080`，安装时可修改
 
-> 前置条件：飞牛设备需要能访问 GHCR，并且 `ghcr.io/subject2019/shelf:0.2.12` 必须为 Public；如果仍为 Private，请先在设备上执行 `docker login ghcr.io`。
+> 前置条件：飞牛设备需要能访问 GHCR，并且 `ghcr.io/subject2019/shelf:1.0.0` 必须为 Public；如果仍为 Private，请先在设备上执行 `docker login ghcr.io`。
 
 ## 目录结构
 
@@ -68,7 +68,7 @@ ${TRIM_PKGVAR}/install.log
 
 或飞牛应用中心对应应用的安装日志。`0.2.7-2` 起已把安装阶段可能失败的凭据检查移出 `install_init`。
 
-`0.2.12-1` 起 `install_init` 会在解压前检查：
+`1.0.0-1` 起 `install_init` 会在解压前检查：
 
 - CPU 架构必须为 `x86_64`；
 - 系统必须能找到 `docker` 命令；
@@ -172,4 +172,4 @@ fnos/app/docker/docker-compose.yaml
 fnos/manifest
 ```
 
-`manifest.version` 是 fpk 版本，可以和运行镜像版本不同（当前 fpk 为 `0.2.12-1`，镜像为 `0.2.12`）。
+`manifest.version` 是 fpk 版本，可以和运行镜像版本不同（当前 fpk 为 `1.0.0-1`，镜像为 `1.0.0`）。

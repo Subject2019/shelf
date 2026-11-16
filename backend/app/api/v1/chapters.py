@@ -6,6 +6,7 @@
 
 from __future__ import annotations
 
+import time
 import urllib.parse
 from pathlib import Path
 
@@ -15,16 +16,27 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.config import Settings, get_settings
+from app.core.security import create_download_token
 from app.db.session import get_db
 from app.models import Book, Chapter, Library, MediaFile, Track, User
-from app.schemas.book import ChapterAudioOut, ChapterCacheList
+from app.schemas.book import (
+    ChapterAudioOut,
+    ChapterCacheList,
+    ChapterOut,
+    DownloadManifestOut,
+    DownloadTicketOut,
+)
 from app.services.chapter_audio import (
     ChapterAudioError,
     clear_book_cache,
     content_type_for,
     ensure_chapter_audio,
 )
-from app.services.permissions import get_current_user, require_visible_book
+from app.services.permissions import (
+    get_current_user,
+    get_download_user,
+    require_visible_book,
+)
 from app.services.streamer import resolve_media_path
 
 router = APIRouter(tags=["chapters"])
@@ -143,6 +155,59 @@ def _disposition(book: Book, chapter: Chapter, suffix: str) -> str:
     )
 
 
+@router.get(
+    "/books/{book_id}/download-manifest", response_model=DownloadManifestOut
+)
+def download_manifest(
+    book_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+    settings: Settings = Depends(get_settings),
+) -> DownloadManifestOut:
+    """返回整本离线下载清单，客户端可一次性拿到章节和服务端缓存信息。"""
+    book = require_visible_book(db, current_user, book_id)
+    chapters = list(
+        db.scalars(
+            select(Chapter).where(Chapter.book_id == book.id).order_by(Chapter.idx)
+        ).all()
+    )
+    cached = _cached_items(db, book, settings)
+    return DownloadManifestOut(
+        book_id=book.id,
+        title=book.title,
+        total_duration_sec=book.total_duration_sec or 0.0,
+        chapters=[
+            ChapterOut(
+                id=chapter.id,
+                idx=chapter.idx,
+                title=chapter.title,
+                start_sec=chapter.start_sec,
+                end_sec=chapter.end_sec,
+                track_id=chapter.track_id,
+            )
+            for chapter in chapters
+        ],
+        cached=cached.items,
+        total_cached_bytes=cached.total_bytes,
+    )
+
+
+@router.post("/books/{book_id}/download-ticket", response_model=DownloadTicketOut)
+def download_ticket(
+    book_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> DownloadTicketOut:
+    """签发单本书下载票据；原生下载器用 X-Download-Token 访问章节音频。"""
+    book = require_visible_book(db, current_user, book_id)
+    token, ttl = create_download_token(current_user.id, book.id)
+    return DownloadTicketOut(
+        token=token,
+        expires_in=ttl,
+        expires_at=int(time.time()) + ttl,
+    )
+
+
 @router.get("/books/{book_id}/chapters/{chapter_index}/audio")
 def get_chapter_audio(
     book_id: int,
@@ -150,7 +215,7 @@ def get_chapter_audio(
     download: bool = Query(
         False, description="true 时带 Content-Disposition，供客户端保存"
     ),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_download_user),
     db: Session = Depends(get_db),
     settings: Settings = Depends(get_settings),
 ) -> FileResponse:
@@ -174,7 +239,7 @@ def get_chapter_audio(
 def cache_chapter(
     book_id: int,
     chapter_index: int,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_download_user),
     db: Session = Depends(get_db),
     settings: Settings = Depends(get_settings),
 ) -> ChapterAudioOut:
@@ -195,15 +260,7 @@ def cache_chapter(
     )
 
 
-@router.get("/books/{book_id}/chapters/cache", response_model=ChapterCacheList)
-def list_chapter_cache(
-    book_id: int,
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
-    settings: Settings = Depends(get_settings),
-) -> ChapterCacheList:
-    """列出该书已切好的章节，客户端据此跳过重复下载。"""
-    book = require_visible_book(db, current_user, book_id)
+def _cached_items(db: Session, book: Book, settings: Settings) -> ChapterCacheList:
     folder = settings.chapter_cache_dir / str(book.id)
     if not folder.is_dir():
         return ChapterCacheList(items=[], total_bytes=0)
@@ -235,6 +292,18 @@ def list_chapter_cache(
             )
         )
     return ChapterCacheList(items=items, total_bytes=total)
+
+
+@router.get("/books/{book_id}/chapters/cache", response_model=ChapterCacheList)
+def list_chapter_cache(
+    book_id: int,
+    current_user: User = Depends(get_download_user),
+    db: Session = Depends(get_db),
+    settings: Settings = Depends(get_settings),
+) -> ChapterCacheList:
+    """列出该书已切好的章节，客户端据此跳过重复下载。"""
+    book = require_visible_book(db, current_user, book_id)
+    return _cached_items(db, book, settings)
 
 
 @router.delete("/books/{book_id}/chapters/cache", status_code=204)

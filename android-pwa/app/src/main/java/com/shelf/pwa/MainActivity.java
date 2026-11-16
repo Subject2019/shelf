@@ -9,6 +9,7 @@ import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.os.Build;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
 import android.view.WindowInsets;
 import android.webkit.JavascriptInterface;
@@ -18,9 +19,15 @@ import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 
+import com.shelf.pwa.download.DownloadBridge;
+import com.shelf.pwa.download.DownloadStore;
+import com.shelf.pwa.offline.LocalApiServer;
 import com.shelf.pwa.player.NativePlayer;
 
 import org.json.JSONObject;
+
+import java.net.HttpURLConnection;
+import java.net.URL;
 
 /**
  * 全屏 WebView 壳：直接加载 shelf WebUI（其本身已具备移动端响应式布局），
@@ -36,6 +43,7 @@ import org.json.JSONObject;
 public class MainActivity extends Activity {
     private static final String PREFS = "shelf_prefs";
     private static final String KEY_URL = "server_url";
+    private static final String TAG = "ShelfOffline";
 
     private WebView webView;
     private NativePlayer nativePlayer;
@@ -47,6 +55,8 @@ public class MainActivity extends Activity {
     /** 网页最近一次上报的主题（true=深色）；启动屏期间系统栏图标先用深色。 */
     private boolean lastDark = true;
     private boolean splashFinished = false;
+    /** 当前是否加载 127.0.0.1 的内置 WebUI；用于避免资源缺失时递归重载。 */
+    private boolean localWebMode = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -94,6 +104,11 @@ public class MainActivity extends Activity {
         });
 
         webView.addJavascriptInterface(new AppBridge(), "ShelfApp");
+        // 离线下载：Web 端只传清单/轮询状态，实际下载在 DownloadService。
+        webView.addJavascriptInterface(new DownloadBridge(this, payload ->
+                runOnUiThread(() -> {
+                    if (nativePlayer != null) nativePlayer.play(payload);
+                })), "ShelfDownload");
 
         // 原生播放：WebView 只做 UI，音频交给 Media3 前台服务，状态栏/锁屏由系统托管。
         nativePlayer = new NativePlayer(this, state -> runOnUiThread(() -> {
@@ -117,15 +132,16 @@ public class MainActivity extends Activity {
                 super.onPageFinished(view, url);
                 pageLoaded = true;
                 injectThemeAndSplash();
+                injectOfflineShortcut();
                 applySafeAreaToPage();
                 view.requestApplyInsets();
             }
 
             @Override
             public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
-                // 仅主框架失败才显示自定义错误页，资源请求忽略
+                // 仅主框架失败才进入离线流程；有下载时加载本地 WebUI，否则显示错误页。
                 if (request.isForMainFrame()) {
-                    showErrorPage();
+                    showOfflineOrError();
                 }
             }
         });
@@ -143,7 +159,56 @@ public class MainActivity extends Activity {
 
         setContentView(webView);
         requestNotificationPermission();
-        webView.loadUrl(url);
+        loadInitialPage();
+    }
+
+    /**
+     * 有已下载书籍时先探测服务器：断网/服务器不可达直接进离线书架，
+     * 避免 WebView 命中缓存后停在登录页，让用户以为只能登录不能离线。
+     */
+    private void loadInitialPage() {
+        if (!hasDownloads()) {
+            Log.i(TAG, "startup online mode: no downloaded books");
+            webView.loadUrl(serverUrl);
+            return;
+        }
+        new Thread(() -> {
+            boolean online = probeServer();
+            Log.i(TAG, "startup offline gate: downloads=yes online=" + online);
+            runOnUiThread(() -> {
+                if (online) {
+                    localWebMode = false;
+                    webView.loadUrl(serverUrl);
+                } else {
+                    showOfflineWeb();
+                }
+            });
+        }, "shelf-startup-probe").start();
+    }
+
+    private boolean hasDownloads() {
+        try {
+            return DownloadStore.get(this).hasDoneBooks();
+        } catch (Exception ignored) {
+            return false;
+        }
+    }
+
+    private boolean probeServer() {
+        HttpURLConnection connection = null;
+        try {
+            URL health = new URL(new URL(serverUrl), "/api/v1/health");
+            connection = (HttpURLConnection) health.openConnection();
+            connection.setConnectTimeout(2500);
+            connection.setReadTimeout(2500);
+            connection.setRequestMethod("GET");
+            int code = connection.getResponseCode();
+            return code >= 200 && code < 400;
+        } catch (Exception ignored) {
+            return false;
+        } finally {
+            if (connection != null) connection.disconnect();
+        }
     }
 
     /**
@@ -174,6 +239,32 @@ public class MainActivity extends Activity {
         webView.evaluateJavascript(js, null);
     }
 
+    /**
+     * 登录页在断网时可能来自 WebView 缓存，不会触发 onReceivedError。
+     * 有下载内容时注入一个原生入口，用户无需重启 App 也能进离线书架。
+     */
+    private void injectOfflineShortcut() {
+        if (!hasDownloads()) return;
+        String js = "(function(){"
+                + "var tries=0;"
+                + "function add(){"
+                + "if(document.getElementById('shelf-offline-shortcut'))return;"
+                + "var heading=document.querySelector('h1');"
+                + "if(!heading || heading.textContent.indexOf('登录')<0){"
+                + "if(tries++<20)setTimeout(add,250);return;}"
+                + "var b=document.createElement('button');"
+                + "b.id='shelf-offline-shortcut';b.type='button';b.textContent='离线书架';"
+                + "b.style.cssText='position:fixed;right:16px;bottom:calc(16px + env(safe-area-inset-bottom));"
+                + "z-index:99999;padding:10px 16px;border:1px solid #e4ded2;border-radius:999px;"
+                + "background:#fffdf8;color:#111110;font-size:13px;box-shadow:0 4px 16px rgba(0,0,0,.10)';"
+                + "b.addEventListener('click',function(){ShelfApp.openOffline();});"
+                + "document.body.appendChild(b);"
+                + "}"
+                + "add();"
+                + "})();";
+        webView.evaluateJavascript(js, null);
+    }
+
     /** 把真实栏高注入为 --sat/--sb 变量（WebUI 顶栏/底栏据此下推内容，避免双份偏移，不再改 html padding）。 */
     private void applySafeAreaToPage() {
         if (!pageLoaded) return;
@@ -188,8 +279,36 @@ public class MainActivity extends Activity {
         webView.evaluateJavascript(js, null);
     }
 
+    private void showOfflineOrError() {
+        if (localWebMode) {
+            showErrorPage();
+        } else if (hasDownloads()) {
+            showOfflineWeb();
+        } else {
+            showErrorPage();
+        }
+    }
+
+    /** 断网时启动本机 API 服务，并加载 APK 内置 WebUI。 */
+    private void showOfflineWeb() {
+        if (!hasDownloads()) {
+            showErrorPage();
+            return;
+        }
+        try {
+            LocalApiServer local = LocalApiServer.ensure(this);
+            localWebMode = true;
+            Log.i(TAG, "local offline api on 127.0.0.1:" + local.getPort());
+            webView.loadUrl("http://127.0.0.1:" + local.getPort() + "/index.html");
+        } catch (Exception error) {
+            Log.e(TAG, "failed to start local offline api", error);
+            showErrorPage();
+        }
+    }
+
     /** 加载失败页：不暴露系统 WebView 的默认 “Webpage not available”。 */
     private void showErrorPage() {
+        localWebMode = false;
         String html = "<html><head><meta name='viewport' "
                 + "content='width=device-width,initial-scale=1,viewport-fit=cover'><style>"
                 + "html,body{margin:0;height:100%;background:#f1ede4;color:#111110;"
@@ -205,12 +324,40 @@ public class MainActivity extends Activity {
                 + "</style></head><body>"
                 + "<h1>无法连接到 shelf</h1>"
                 + "<p>请确认手机与服务器在同一网络，且地址填写正确。</p>"
+                + "<div id='offline' style='width:100%;max-width:360px;text-align:left'></div>"
                 + "<button type='button' onclick='ShelfApp.retry()'>重试</button>"
+                + "<script>"
+                + "(function(){"
+                + "var host=document.getElementById('offline');"
+                + "if(!window.ShelfDownload){host.textContent='当前客户端不支持离线书架';return;}"
+                + "var data={};try{data=JSON.parse(ShelfDownload.snapshot());}catch(e){}"
+                + "var books=Object.keys(data).map(function(k){return data[k];})"
+                + ".filter(function(b){return b.status==='done' && b.done>0;});"
+                + "if(!books.length){host.innerHTML='<p style=\"font-size:12px\">还没有下载完成的书籍。</p>';return;}"
+                + "var title=document.createElement('h2');"
+                + "title.textContent='已下载书籍';"
+                + "title.style.cssText='font-size:14px;margin:4px 0 8px';"
+                + "host.appendChild(title);"
+                + "books.forEach(function(book){"
+                + "var row=document.createElement('div');"
+                + "row.style.cssText='display:flex;align-items:center;gap:10px;padding:10px 0;border-top:1px solid rgba(17,17,16,.10)';"
+                + "var name=document.createElement('div');"
+                + "name.textContent=book.title || ('书籍 '+book.bookId);"
+                + "name.style.cssText='flex:1;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap';"
+                + "var btn=document.createElement('button');"
+                + "btn.type='button';btn.textContent='播放';"
+                + "btn.style.cssText='padding:8px 18px;border-radius:999px;background:#f05a32;color:#fff;border:0;font-size:13px';"
+                + "btn.addEventListener('click',function(){ShelfDownload.playBook(book.bookId);});"
+                + "row.appendChild(name);row.appendChild(btn);host.appendChild(row);"
+                + "});"
+                + "})();"
+                + "</script>"
                 + "</body></html>";
         webView.loadDataWithBaseURL(serverUrl, html, "text/html", "utf-8", null);
     }
 
     private void reload() {
+        localWebMode = false;
         if (webView != null && serverUrl != null) {
             webView.loadUrl(serverUrl);
         }
@@ -366,6 +513,12 @@ public class MainActivity extends Activity {
         public void retry() {
             runOnUiThread(() -> reload());
         }
+
+        /** 登录页的「离线书架」入口。 */
+        @JavascriptInterface
+        public void openOffline() {
+            runOnUiThread(MainActivity.this::showOfflineWeb);
+        }
     }
 
     /** 清除已保存的地址并回到录入页。 */
@@ -389,6 +542,7 @@ public class MainActivity extends Activity {
 
     @Override
     protected void onDestroy() {
+        LocalApiServer.stopIfRunning();
         if (nativePlayer != null) {
             nativePlayer.release();
             nativePlayer = null;

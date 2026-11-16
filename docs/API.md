@@ -1,4 +1,4 @@
-# EchoShelf HTTP API 契约（v0.2.12）
+# EchoShelf HTTP API 契约（v1.0.0）
 
 > 面向 WebUI、安卓 App 与第三方客户端。本文件与代码同步维护，**以服务端实现为准**。
 > 机器可读契约：`GET /api/openapi.json`，交互式文档：`GET /api/docs`。
@@ -102,10 +102,12 @@ Swagger UI GET /api/docs
 | | GET | `/series` | 登录 |
 | | GET | `/authors` | 登录 |
 | 章节 | GET | `/books/{id}/chapters` | 登录 |
-| | GET | `/books/{id}/chapters/cache` | 登录 |
+| | GET | `/books/{id}/download-manifest` | 登录 |
+| | POST | `/books/{id}/download-ticket` | 登录 |
+| | GET | `/books/{id}/chapters/cache` | 登录/下载票据 |
 | | DELETE | `/books/{id}/chapters/cache` | 登录 |
-| | POST | `/books/{id}/chapters/{idx}/cache` | 登录 |
-| | GET | `/books/{id}/chapters/{idx}/audio` | 登录 |
+| | POST | `/books/{id}/chapters/{idx}/cache` | 登录/下载票据 |
+| | GET | `/books/{id}/chapters/{idx}/audio` | 登录/下载票据 |
 | 播放 | POST | `/books/{id}/play-token` | 登录 |
 | | GET/HEAD | `/books/{id}/tracks/{track_id}/stream` | 登录 / 流令牌 |
 | | POST | `/books/{id}/tracks/{track_id}/transcode` | 登录 |
@@ -197,7 +199,7 @@ sudo -u echoshelf /opt/echoshelf/bin/echoshelf admin create
 ```json
 { "username": "admin", "password": "******",
   "device": { "id": "android-abc123", "name": "Pixel 8", "platform": "android",
-              "app_version": "0.2.12", "os": "Android 14",
+              "app_version": "1.0.0", "os": "Android 14",
               "form_factor": "phone", "screen": "1080×2400 · 2.6x",
               "user_agent": "Mozilla/5.0 (Linux; Android 14; Pixel 8) …" } }
 ```
@@ -519,6 +521,39 @@ Web 客户端现在优先使用「播放偏好」里的**设备级秒数**（填
 - 章节来源见 `chapter_source`：`embedded`（文件内嵌）/ `cue`（CUE 分轨）/ `track_split`（多文件按轨切）/
   `virtual`（按时长切分）/ `manual`（手工编辑过）
 
+### GET /books/{id}/download-manifest
+
+离线下载清单，返回整本书的章节和服务端已切好的缓存：
+
+```json
+{ "book_id": 1, "title": "示例书", "total_duration_sec": 3600.0,
+  "chapters": [ { "id": 1, "idx": 0, "title": "第一集",
+                  "start_sec": 0.0, "end_sec": 1800.0, "track_id": 1 } ],
+  "cached": [ { "book_id": 1, "index": 0, "title": "第一集",
+                "cache_key": "0000-...m4a", "bytes": 123456,
+                "content_type": "audio/mp4", "start_sec": 0.0,
+                "duration_sec": 1800.0, "created": false } ],
+  "total_cached_bytes": 123456 }
+```
+
+`cached` 可能为空，客户端按 `chapters` 逐集请求音频即可。需要登录，且只能读取有权限的书库。
+
+### POST /books/{id}/download-ticket
+
+为 Android 原生下载器签发**单本书**的短时票据，默认 12 小时：
+
+```json
+{ "token": "eyJ...", "expires_in": 43200, "expires_at": 1792872329 }
+```
+
+下载章节音频时用请求头：
+
+```http
+X-Download-Token: eyJ...
+```
+
+票据只允许访问该 `book_id` 的章节音频/缓存接口，不能访问其他书籍或普通 API。票据过期后重新签发即可。
+
 ### POST /books/{id}/chapters/{idx}/cache
 
 预生成该集的独立音频切片，幂等。`200` → `ChapterAudioOut`：
@@ -535,7 +570,8 @@ Web 客户端现在优先使用「播放偏好」里的**设备级秒数**（填
 
 ### GET /books/{id}/chapters/{idx}/audio
 
-`?download=1` 时附带 `Content-Disposition`。支持 `Range`：
+`?download=1` 时附带 `Content-Disposition`。支持普通 Bearer，也支持下载票据
+`X-Download-Token`。支持 `Range`：
 
 ```
 206 Partial Content
@@ -930,7 +966,7 @@ WebUI 已按此实现（`web/src/store/player.ts` 的 `syncFromServer()` +
 
 ```json
 { "items": [ { "id": "web-dymrmm7k", "user_id": 1, "username": "demo",
-               "name": "Chrome 141", "platform": "web", "app_version": "0.2.12",
+               "name": "Chrome 141", "platform": "web", "app_version": "1.0.0",
                "os": "Android 14", "form_factor": "phone", "screen": "390×844 · 3x",
                "user_agent": "Mozilla/5.0 (Linux; Android 14; Pixel 8) … Chrome/141.0.0.0 Mobile Safari/537.36",
                "created_at": 1792852192, "last_seen_at": 1792872329,
@@ -1001,7 +1037,7 @@ WebUI 已按此实现（`web/src/store/player.ts` 的 `syncFromServer()` +
 ### GET /health（公开）
 
 ```json
-{ "status": "ok", "version": "0.2.12", "db": "ok", "ffmpeg": true,
+{ "status": "ok", "version": "1.0.0", "db": "ok", "ffmpeg": true,
   "libraries": 1, "books": 4, "uptime_sec": 505,
   "transcode": { "enabled": true, "active": 1, "completed": 12 } }
 ```

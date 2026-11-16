@@ -124,22 +124,27 @@ export default function PlayerLibraryPanel({
             </p>
           )}
           {chapters.map((chapter, index) => {
-            const active = index === currentIndex;
+            const unavailable = chapter.available === false;
+            const active = !unavailable && index === currentIndex;
             const length = (chapter.end_sec ?? chapter.start_sec) - chapter.start_sec;
             return (
               <button
                 key={chapter.id}
                 ref={active ? activeRef : undefined}
                 type="button"
+                disabled={unavailable}
+                title={unavailable ? "这一章尚未下载" : undefined}
                 onClick={() => {
                   onSeek(chapter.start_sec);
                   onNavigate?.();
                 }}
                 className={[
                   "flex w-full items-start gap-3 px-4 py-2.5 text-left transition",
-                  active
-                    ? "bg-brand-500/10"
-                    : "hover:bg-zinc-100 dark:hover:bg-white/5",
+                  unavailable
+                    ? "cursor-not-allowed opacity-40"
+                    : active
+                      ? "bg-brand-500/10"
+                      : "hover:bg-zinc-100 dark:hover:bg-white/5",
                 ].join(" ")}
               >
                 <span
@@ -160,8 +165,11 @@ export default function PlayerLibraryPanel({
                     {chapter.title}
                   </span>
                   <span className="mt-0.5 block text-[11px] text-zinc-500">
-                    {formatClock(chapter.start_sec)}
-                    {length > 0 ? ` · ${formatClock(length)}` : ""}
+                    {unavailable
+                      ? "未下载"
+                      : `${formatClock(chapter.start_sec)}${
+                          length > 0 ? ` · ${formatClock(length)}` : ""
+                        }`}
                   </span>
                 </span>
                 {active && (

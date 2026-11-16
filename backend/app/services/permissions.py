@@ -5,11 +5,17 @@
 
 from __future__ import annotations
 
-from fastapi import Depends, HTTPException
+from fastapi import Depends, Header, HTTPException
+from fastapi.security import HTTPAuthorizationCredentials
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.core.security import get_current_user
+from app.core.security import (
+    bearer_scheme,
+    decode_download_token,
+    get_current_user,
+)
+from app.db.session import get_db
 from app.models import Book, Library, LibraryUser, User
 
 
@@ -74,6 +80,32 @@ def can_delete_cover(user: User, book: Book) -> bool:
     if user.role == ROLE_ADMIN:
         return True
     return book.cover_uploaded_by is not None and book.cover_uploaded_by == user.id
+
+
+def get_download_user(
+    book_id: int,
+    credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
+    download_token: str | None = Header(default=None, alias="X-Download-Token"),
+    db: Session = Depends(get_db),
+) -> User:
+    """章节下载/切片鉴权：支持普通 access token 或单本书下载票据。
+
+    下载票据只允许本书的 `bid`，不能访问其他书籍或普通 API；如果同时带了
+    无效票据，不会回退到 access token，避免客户端误以为票据可用。
+    """
+    if download_token:
+        user_id = decode_download_token(download_token, book_id)
+        if user_id is None:
+            raise HTTPException(
+                status_code=401,
+                detail="下载票据无效或已过期",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        user = db.get(User, user_id)
+        if user is None or not user.is_active:
+            raise HTTPException(status_code=401, detail="下载账号不可用")
+        return user
+    return get_current_user(credentials, db)
 
 
 def require_admin(current_user: User = Depends(get_current_user)) -> User:

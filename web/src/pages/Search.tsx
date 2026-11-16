@@ -5,11 +5,13 @@ import { api } from "../api/endpoints";
 import BookRow from "../components/shelf/BookRow";
 import { Icon } from "../components/ui/Icon";
 import { formatCount } from "../lib/format";
+import { isOfflineMode } from "../lib/download";
 import { useDebouncedValue } from "../lib/useDebouncedValue";
 
 const PAGE_SIZE = 50;
 
 export default function Search() {
+  const offline = isOfflineMode();
   const [keyword, setKeyword] = useState("");
   const debounced = useDebouncedValue(keyword, 300);
   const inputRef = useRef<HTMLInputElement | null>(null);
@@ -33,7 +35,7 @@ export default function Search() {
       <header>
         <h1 className="text-2xl font-semibold tracking-tight">搜索</h1>
         <p className="mt-1 text-sm text-zinc-500">
-          按书名、作者或系列查找，输入即搜。
+          {offline ? "只搜索本机已下载的离线书籍。" : "按书名、作者或系列查找，输入即搜。"}
         </p>
       </header>
 
@@ -46,7 +48,7 @@ export default function Search() {
           ref={inputRef}
           value={keyword}
           onChange={(event) => setKeyword(event.target.value)}
-          placeholder="书名、作者、系列…"
+          placeholder={offline ? "搜索离线书籍…" : "书名、作者、系列…"}
           aria-label="搜索书籍"
           className="h-11 w-full rounded-xl border border-white/70 bg-white/70 pl-10 pr-10 text-sm outline-none backdrop-blur-md transition focus:border-brand-500 dark:border-white/10 dark:bg-white/[0.06]"
         />
@@ -70,7 +72,9 @@ export default function Search() {
           <Icon name="search" className="mx-auto size-6 text-zinc-400" />
           <p className="mt-3 text-sm text-zinc-500">输入关键词开始搜索</p>
           <p className="mt-1 text-xs text-zinc-400">
-            支持中文书名、作者名与系列名，例如「间客」「猫腻」
+            {offline
+              ? "离线模式只索引已经下载到本机的书籍"
+              : "支持中文书名、作者名与系列名，例如「间客」「猫腻」"}
           </p>
         </div>
       )}
@@ -88,7 +92,9 @@ export default function Search() {
       {term && result.isSuccess && items.length === 0 && (
         <div className="rounded-2xl border border-dashed border-zinc-200 px-6 py-14 text-center dark:border-white/10">
           <p className="text-sm text-zinc-500">没有找到与「{term}」相关的书</p>
-          <p className="mt-1 text-xs text-zinc-400">换个关键词，或检查书库是否已扫描</p>
+          <p className="mt-1 text-xs text-zinc-400">
+            {offline ? "本机没有匹配的已下载书籍，换个关键词试试" : "换个关键词，或检查书库是否已扫描"}
+          </p>
         </div>
       )}
 

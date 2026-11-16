@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 
 import type { Book } from "../../api/types";
+import { isOfflineMode } from "../../lib/download";
 import { formatDuration } from "../../lib/format";
 import { usePlayer } from "../../store/player";
 import Cover from "../ui/Cover";
@@ -11,7 +12,13 @@ interface BookCardProps {
 }
 
 export default function BookCard({ book }: BookCardProps) {
+  const offline = isOfflineMode();
   const percent = book.progress && !book.progress.is_finished ? book.progress.percent : 0;
+  const partial =
+    offline &&
+    book.downloaded_chapters !== undefined &&
+    book.downloaded_chapters > 0 &&
+    book.downloaded_chapters < book.track_count;
 
   return (
     <article className="group relative flex h-full flex-col overflow-hidden rounded-card border border-white/70 bg-white/70 backdrop-blur-md transition duration-300 hover:-translate-y-1 hover:border-brand-500/40 hover:shadow-glow dark:border-white/10 dark:bg-white/[0.045]">
@@ -35,6 +42,12 @@ export default function BookCard({ book }: BookCardProps) {
         {book.hidden && (
           <span className="absolute left-2 top-2 z-20 rounded-full bg-black/70 px-2 py-0.5 text-[10px] font-medium text-white backdrop-blur">
             已隐藏
+          </span>
+        )}
+
+        {partial && (
+          <span className="absolute right-2 top-2 z-20 rounded-full bg-amber-500/90 px-2 py-0.5 text-[10px] font-medium text-white backdrop-blur">
+            部分下载
           </span>
         )}
 
@@ -63,10 +76,18 @@ export default function BookCard({ book }: BookCardProps) {
         <h3 className="line-clamp-2 text-balance text-sm font-medium leading-5">
           {book.title}
         </h3>
-        <p className="mt-1 truncate text-xs text-zinc-500">{book.author ?? "未知作者"}</p>
+        <p className="mt-1 truncate text-xs text-zinc-500">
+          {book.author ?? (offline ? "本地离线书籍" : "未知作者")}
+        </p>
         <div className="mt-2 flex items-center justify-between text-[11px] text-zinc-500">
           <span>{formatDuration(book.total_duration_sec)}</span>
-          <span>{book.track_count} 轨</span>
+          <span>
+            {offline
+              ? `${
+                  book.downloaded_chapters ?? book.track_count
+                }/${book.track_count} 章`
+              : `${book.track_count} 轨`}
+          </span>
         </div>
       </div>
 

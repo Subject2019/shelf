@@ -6,6 +6,7 @@ import { api } from "../api/endpoints";
 import PlayerLibraryPanel from "../components/player/PlayerLibraryPanel";
 import PlayerStage from "../components/player/PlayerStage";
 import { Icon } from "../components/ui/Icon";
+import { isOfflineMode } from "../lib/download";
 import {
   chapterIndexAt,
   readLastBook,
@@ -14,6 +15,7 @@ import {
 } from "../store/player";
 
 export default function PlayerPage() {
+  const offline = isOfflineMode();
   const book = usePlayer((state) => state.book);
   const [lastBook, setLastBook] = useState<LastBook | null>(null);
 
@@ -101,6 +103,7 @@ export default function PlayerPage() {
             {isPlaying ? "正在播放" : "已暂停"}
             {currentChapter ? ` · ${currentChapter.title}` : ""}
             {rate !== 1 ? ` · ${rate}×` : ""}
+            {offline ? " · 离线本地播放" : ""}
           </p>
         </div>
       </header>

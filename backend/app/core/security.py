@@ -134,6 +134,36 @@ def decode_stream_token(token: str, book_id: int) -> int | None:
         return None
 
 
+def create_download_token(
+    user_id: int, book_id: int, ttl_sec: int | None = None
+) -> tuple[str, int]:
+    """签发只能下载单本书章节音频的票据，供 Android 原生下载器后台使用。"""
+    ttl = ttl_sec or get_settings().download_token_ttl_sec
+    now = int(time.time())
+    payload = {
+        "sub": str(user_id),
+        "bid": book_id,
+        "typ": "download",
+        "iat": now,
+        "exp": now + ttl,
+    }
+    token = jwt.encode(payload, get_secret_key(), algorithm=JWT_ALGORITHM)
+    return token, ttl
+
+
+def decode_download_token(token: str, book_id: int) -> int | None:
+    try:
+        payload = jwt.decode(token, get_secret_key(), algorithms=[JWT_ALGORITHM])
+    except jwt.PyJWTError:
+        return None
+    if payload.get("typ") != "download" or payload.get("bid") != book_id:
+        return None
+    try:
+        return int(payload["sub"])
+    except (KeyError, TypeError, ValueError):
+        return None
+
+
 def new_refresh_token() -> tuple[str, str]:
     """返回 (明文, sha256)。明文只回给客户端，库里只存哈希。"""
     plain = secrets.token_urlsafe(48)

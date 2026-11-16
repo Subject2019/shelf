@@ -190,6 +190,8 @@ export interface Book {
   intro_sec: number;
   outro_sec: number;
   track_count: number;
+  /** 离线本地库：已完成下载的章节数；在线接口不返回 */
+  downloaded_chapters?: number;
   size_bytes: number;
   chapter_source: string | null;
   added_at: number;
@@ -256,6 +258,10 @@ export interface Track {
   format: string | null;
   bitrate: number | null;
   stream_url: string;
+  /** 离线下载后的本地文件路径；仅 Android 原生播放器使用。 */
+  localPath?: string;
+  /** 合成章节音轨时，向服务端上报的真实 track_id。 */
+  progressTrackId?: number;
 }
 
 export interface Chapter {
@@ -265,6 +271,8 @@ export interface Chapter {
   start_sec: number;
   end_sec: number | null;
   track_id: number;
+  /** 离线本地库：false 表示该章节尚未下载；在线接口不返回该字段。 */
+  available?: boolean;
 }
 
 export interface BookDetail extends Book {
@@ -299,6 +307,33 @@ export interface ChapterList {
   total: number;
   page: number;
   page_size: number;
+}
+
+export interface DownloadManifest {
+  book_id: number;
+  title: string;
+  total_duration_sec: number;
+  chapters: Chapter[];
+  cached: CachedChapter[];
+  total_cached_bytes: number;
+}
+
+export interface CachedChapter {
+  book_id: number;
+  index: number;
+  title: string | null;
+  cache_key: string;
+  bytes: number;
+  content_type: string;
+  start_sec: number;
+  duration_sec: number;
+  created: boolean;
+}
+
+export interface DownloadTicket {
+  token: string;
+  expires_in: number;
+  expires_at: number;
 }
 
 export interface BookUpdatePayload {

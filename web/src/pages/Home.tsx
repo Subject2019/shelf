@@ -6,6 +6,7 @@ import BookCard from "../components/shelf/BookCard";
 import ListeningCard from "../components/stats/ListeningCard";
 import { Icon } from "../components/ui/Icon";
 import { formatCount } from "../lib/format";
+import { isOfflineMode } from "../lib/download";
 import { useAuth } from "../store/auth";
 
 const STEPS = [
@@ -14,7 +15,14 @@ const STEPS = [
   { title: "多端续听", detail: "网页与手机共享同一份进度，换设备接着上次的位置。" },
 ];
 
+const OFFLINE_STEPS = [
+  { title: "按需下载", detail: "在书籍详情里下载整本，或只选择需要的章节。" },
+  { title: "断网可听", detail: "章节、进度和书签保存在本机，离线也能继续播放。" },
+  { title: "本机数据", detail: "离线书库只有一个用户，不会向远程服务器同步。" },
+];
+
 export default function Home() {
+  const offline = isOfflineMode();
   const status = useAuth((state) => state.status);
   const user = useAuth((state) => state.user);
 
@@ -36,26 +44,27 @@ export default function Home() {
 
   const cards = [
     {
-      label: "书籍",
+      label: offline ? "离线书籍" : "书籍",
       value: health.data ? formatCount(health.data.books) : "—",
-      hint: "已入库",
+      hint: offline ? "已下载到本机" : "已入库",
     },
     {
-      label: "书库",
+      label: offline ? "本地书库" : "书库",
       value: health.data ? formatCount(health.data.libraries) : "—",
-      hint: "已登记",
+      hint: offline ? "仅本机访问" : "已登记",
     },
     {
-      label: "数据库",
+      label: offline ? "本机数据" : "数据库",
       value: health.data?.db === "ok" ? "正常" : "—",
-      hint: "SQLite · WAL",
+      hint: offline ? "SQLite · 离线保存" : "SQLite · WAL",
     },
     {
-      label: "音频引擎",
+      label: offline ? "本地播放" : "音频引擎",
       value: health.data?.ffmpeg ? "可用" : "缺失",
-      hint: "ffmpeg / ffprobe",
+      hint: offline ? "Media3 · 本地文件" : "ffmpeg / ffprobe",
     },
   ];
+  const steps = offline ? OFFLINE_STEPS : STEPS;
 
   return (
     <div className="space-y-8">
@@ -68,13 +77,30 @@ export default function Home() {
         <div className="relative max-w-2xl">
           <span className="inline-flex items-center gap-2 rounded-full border border-brand-500/30 bg-brand-500/10 px-3 py-1 text-xs font-medium text-brand-500 backdrop-blur-sm">
             <span
-              className={`size-1.5 rounded-full ${online ? "bg-emerald-400" : "bg-amber-400"}`}
+              className={`size-1.5 rounded-full ${
+                offline ? "bg-amber-400" : online ? "bg-emerald-400" : "bg-amber-400"
+              }`}
             />
-            {online ? "服务在线" : health.isLoading ? "正在连接服务" : "服务未连接"}
+            {offline
+              ? "离线模式"
+              : online
+                ? "服务在线"
+                : health.isLoading
+                  ? "正在连接服务"
+                  : "服务未连接"}
           </span>
           <h1 className="mt-5 text-3xl font-semibold tracking-tight sm:text-4xl">
-            把有声书
-            <span className="text-gradient">搬回自己的书架</span>
+            {offline ? (
+              <>
+                离线也能
+                <span className="text-gradient">继续听</span>
+              </>
+            ) : (
+              <>
+                把有声书
+                <span className="text-gradient">搬回自己的书架</span>
+              </>
+            )}
           </h1>
           <div className="mt-7 flex flex-wrap items-center gap-3">
             {status === "authenticated" ? (
@@ -98,12 +124,14 @@ export default function Home() {
               href="#status"
               className="inline-flex items-center gap-2 rounded-full border border-zinc-300 px-5 py-2.5 text-sm text-zinc-700 transition hover:border-brand-500/40 hover:text-brand-500 dark:border-white/10 dark:text-zinc-300"
             >
-              查看服务状态
+              {offline ? "查看离线状态" : "查看服务状态"}
             </a>
           </div>
           {status === "authenticated" && user && (
             <p className="mt-4 text-xs text-zinc-500">
-              已登录为 {user.display_name ?? user.username}
+              {offline
+                ? "当前为离线用户，数据仅保存在本机"
+                : `已登录为 ${user.display_name ?? user.username}`}
             </p>
           )}
         </div>
@@ -122,17 +150,21 @@ export default function Home() {
         ))}
       </section>
 
-      {status === "authenticated" && <ListeningCard enabled />}
+      {status === "authenticated" && !offline && <ListeningCard enabled />}
 
       <section className="space-y-3">
         <div className="flex items-end justify-between gap-3">
           <div>
-            <h2 className="text-lg font-semibold">最近添加</h2>
-            <p className="text-xs text-zinc-500">扫描入库后按添加时间倒序</p>
+            <h2 className="text-lg font-semibold">
+              {offline ? "最近下载" : "最近添加"}
+            </h2>
+            <p className="text-xs text-zinc-500">
+              {offline ? "本机已下载的书籍" : "扫描入库后按添加时间倒序"}
+            </p>
           </div>
           {status === "authenticated" && (
             <Link to="/library" className="text-xs text-brand-500 hover:underline">
-              全部书籍
+              {offline ? "全部离线书籍" : "全部书籍"}
             </Link>
           )}
         </div>
@@ -149,16 +181,20 @@ export default function Home() {
           </div>
         ) : (
           <div className="rounded-card border border-dashed border-zinc-300 px-6 py-10 text-center dark:border-white/10">
-            <p className="text-sm text-zinc-500">书架还是空的</p>
+            <p className="text-sm text-zinc-500">
+              {offline ? "还没有下载任何书籍" : "书架还是空的"}
+            </p>
             <p className="mt-1 text-xs text-zinc-500">
-              在「书库」里登记一个音频目录并触发扫描即可入库。
+              {offline
+                ? "联网时在书籍详情里选择整本或章节下载，之后就能离线收听。"
+                : "在「书库」里登记一个音频目录并触发扫描即可入库。"}
             </p>
           </div>
         )}
       </section>
 
       <section className="grid gap-3 sm:grid-cols-3">
-        {STEPS.map((step, index) => (
+        {steps.map((step, index) => (
           <div
             key={step.title}
             className="glass rounded-card p-5"

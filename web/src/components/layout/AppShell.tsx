@@ -25,6 +25,7 @@ const NAV: { to: string; label: string; icon: IconName }[] = [
 ];
 
 const MOBILE_NAV = NAV;
+const OFFLINE_DISABLED = new Set(["/collections"]);
 
 function navClass(isActive: boolean): string {
   return [
@@ -35,7 +36,11 @@ function navClass(isActive: boolean): string {
   ].join(" ");
 }
 
-export default function AppShell() {
+function disabledNavClass(): string {
+  return "flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium text-zinc-400 opacity-45 dark:text-zinc-600";
+}
+
+export default function AppShell({ offline = false }: { offline?: boolean }) {
   const location = useLocation();
   const theme = useUi((state) => state.theme);
   const toggleTheme = useUi((state) => state.toggleTheme);
@@ -43,39 +48,44 @@ export default function AppShell() {
   const status = useAuth((state) => state.status);
   const logout = useAuth((state) => state.logout);
   const bootstrap = useAuth((state) => state.bootstrap);
+  const enterOffline = useAuth((state) => state.enterOffline);
   const hasPlayer = usePlayer((state) => Boolean(state.book));
   const started = useRef(false);
   const queryClient = useQueryClient();
 
   useEffect(() => {
+    if (offline) {
+      enterOffline();
+      return;
+    }
     if (started.current) return;
     started.current = true;
     void bootstrap();
-  }, [bootstrap]);
+  }, [bootstrap, enterOffline, offline]);
 
   // 登录/重新登录完成后先重拉书架与详情，避免继续使用上一会话的旧进度。
   useEffect(() => {
-    if (status !== "authenticated") return;
+    if (offline || status !== "authenticated") return;
     void queryClient.invalidateQueries();
-  }, [status, queryClient]);
+  }, [offline, status, queryClient]);
 
   // 登录态确定 = 首屏路由已渲染、可交互；此时让启动屏退场。
-  // bootstrap 内部任何失败都会收敛成 anonymous，因此这里必定会执行，不会卡在启动屏。
+  // 离线模式没有登录态，直接让启动屏退场。
   useEffect(() => {
-    if (status === "loading") return undefined;
+    if (!offline && status === "loading") return undefined;
     const raf = requestAnimationFrame(() => splashReady());
     return () => cancelAnimationFrame(raf);
-  }, [status]);
+  }, [offline, status]);
 
   // 登录后开始上报在线状态；页面关闭 / 切后台超时会主动标记离线
   useEffect(() => {
-    if (!user) return;
+    if (offline || !user) return;
     return startPresence();
-  }, [user]);
+  }, [offline, user]);
 
   // 回到前台 / 定时轮询时对齐账号的最新进度（一个账号一本书只有一条进度）
   useEffect(() => {
-    if (!user) return;
+    if (offline || !user) return;
 
     const sync = () => {
       if (document.hidden) return;
@@ -94,7 +104,7 @@ export default function AppShell() {
       window.removeEventListener("pageshow", sync);
       window.clearInterval(timer);
     };
-  }, [user]);
+  }, [offline, user]);
 
   usePlayerHotkeys();
   useMediaSession();
@@ -104,7 +114,7 @@ export default function AppShell() {
     ? "书籍详情"
     : location.pathname.startsWith("/collections/")
       ? "书单"
-      : current?.label ?? "shelf";
+      : current?.label ?? (offline ? "离线书架" : "shelf");
 
   return (
     <div className="relative isolate min-h-dvh text-zinc-900 transition-colors dark:text-zinc-100">
@@ -131,22 +141,37 @@ export default function AppShell() {
             />
             <span>
               <span className="block text-sm font-semibold tracking-wide">shelf</span>
-              <span className="block text-[11px] text-zinc-500">自托管有声书</span>
+              <span className="block text-[11px] text-zinc-500">
+                {offline ? "本地离线书库" : "自托管有声书"}
+              </span>
             </span>
           </Link>
 
           <nav className="mt-8 space-y-1">
-            {NAV.map((item) => (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                end={item.to === "/"}
-                className={({ isActive }) => navClass(isActive)}
-              >
-                <Icon name={item.icon} />
-                {item.label}
-              </NavLink>
-            ))}
+            {NAV.map((item) =>
+              offline && OFFLINE_DISABLED.has(item.to) ? (
+                <span
+                  key={item.to}
+                  title="离线模式暂不支持"
+                  aria-disabled="true"
+                  className={disabledNavClass()}
+                >
+                  <Icon name={item.icon} />
+                  {item.label}
+                  <span className="ml-auto text-[10px]">离线</span>
+                </span>
+              ) : (
+                <NavLink
+                  key={item.to}
+                  to={item.to}
+                  end={item.to === "/"}
+                  className={({ isActive }) => navClass(isActive)}
+                >
+                  <Icon name={item.icon} />
+                  {item.label}
+                </NavLink>
+              ),
+            )}
           </nav>
 
           <div className="mt-auto space-y-3 pt-6">
@@ -159,7 +184,26 @@ export default function AppShell() {
               {theme === "dark" ? "切换浅色" : "切换深色"}
             </button>
 
-            {status === "loading" ? (
+            {offline ? (
+              <div className="rounded-card border border-zinc-200/80 bg-white/70 p-3 dark:border-white/5 dark:bg-white/5">
+                <div className="flex items-center gap-2 text-sm font-medium">
+                  <span className="flex size-8 items-center justify-center rounded-full bg-amber-500/15 text-amber-600">
+                    <Icon name="download" className="size-4" />
+                  </span>
+                  离线模式
+                </div>
+                <p className="mt-2 text-[11px] leading-5 text-zinc-500">
+                  搜索和设置只作用于本地离线书库；书单暂不可用。
+                </p>
+                <button
+                  type="button"
+                  onClick={() => window.ShelfApp?.retry?.()}
+                  className="mt-3 w-full rounded-lg border border-zinc-200 px-3 py-1.5 text-xs text-zinc-600 transition hover:border-brand-500/40 hover:text-brand-500 dark:border-white/10 dark:text-zinc-400"
+                >
+                  重新连接服务器
+                </button>
+              </div>
+            ) : status === "loading" ? (
               <div className="h-16 animate-pulse rounded-card bg-zinc-200/60 dark:bg-white/5" />
             ) : user ? (
               <div className="rounded-card border border-zinc-200/80 bg-white/70 p-3 dark:border-white/5 dark:bg-white/5">
@@ -223,7 +267,12 @@ export default function AppShell() {
               >
                 <Icon name={theme === "dark" ? "sun" : "moon"} />
               </button>
-              {user ? (
+              {offline ? (
+                <span className="ml-1 inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-2.5 py-1 text-[11px] font-medium text-amber-600">
+                  <Icon name="download" className="size-3" />
+                  离线
+                </span>
+              ) : user ? (
                 <Link
                   to="/settings"
                   className="ml-1 flex size-9 items-center justify-center rounded-full bg-brand-500/15 text-sm font-semibold text-brand-500 lg:hidden"
@@ -262,22 +311,34 @@ export default function AppShell() {
 
       <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-white/60 bg-white/75 pb-[var(--sb,0px)] backdrop-blur-2xl backdrop-saturate-150 dark:border-white/5 dark:bg-ink-950/70 lg:hidden">
         <div className="mx-auto flex max-w-md items-center justify-around px-2 py-1.5">
-          {MOBILE_NAV.map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              end={item.to === "/"}
-              className={({ isActive }) =>
-                [
-                  "flex min-w-0 flex-1 flex-col items-center gap-0.5 rounded-lg px-1 py-1 text-[10px] transition",
-                  isActive ? "text-brand-500" : "text-zinc-500",
-                ].join(" ")
-              }
-            >
-              <Icon name={item.icon} className="size-5" />
-              {item.label}
-            </NavLink>
-          ))}
+          {MOBILE_NAV.map((item) =>
+            offline && OFFLINE_DISABLED.has(item.to) ? (
+              <span
+                key={item.to}
+                aria-disabled="true"
+                title="离线模式暂不支持"
+                className="flex min-w-0 flex-1 cursor-not-allowed flex-col items-center gap-0.5 rounded-lg px-1 py-1 text-[10px] text-zinc-400 opacity-40"
+              >
+                <Icon name={item.icon} className="size-5" />
+                {item.label}
+              </span>
+            ) : (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                end={item.to === "/"}
+                className={({ isActive }) =>
+                  [
+                    "flex min-w-0 flex-1 flex-col items-center gap-0.5 rounded-lg px-1 py-1 text-[10px] transition",
+                    isActive ? "text-brand-500" : "text-zinc-500",
+                  ].join(" ")
+                }
+              >
+                <Icon name={item.icon} className="size-5" />
+                {item.label}
+              </NavLink>
+            ),
+          )}
         </div>
       </nav>
     </div>

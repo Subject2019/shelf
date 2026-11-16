@@ -27,42 +27,48 @@ POST /api/v1/auth/refresh        {"refresh_token"}
   → 新的 access_token + refresh_token（旧的立即失效，务必替换）
 ```
 
-- 下载接口**只接受** `Authorization: Bearer <access_token>`，不支持 `?token=` 查询参数
-  （那个是给 `<audio>`/ExoPlayer 播放整文件用的 `play-token`，与本节无关）。
-- `access_token` 有效期 **30 分钟**，`refresh_token` **30 天**。
-- 已建立连接的下载不会因 token 过期中断，但**每个新请求**都要有效 token。
-  批量下载时建议每个请求前检查剩余有效期（< 2 分钟先刷新）。
-- 401 处理：刷新一次后重放该请求；刷新也失败则回到登录页，不要循环重试。
+- 下载接口支持两种鉴权：
+  - `Authorization: Bearer <access_token>`：适合浏览器/短任务；
+  - `X-Download-Token: <download-ticket>`：适合 Android 原生后台下载。
+- `access_token` 有效期只有 **30 分钟**，后台批量下载很容易在队列中途过期。
+  因此原生客户端应先调 `POST /books/{id}/download-ticket` 换一张 **12 小时**、
+  只允许访问单本书章节音频的票据，再开始队列。
+- 票据不能访问其他书籍或普通 API；过期后重新签发，不要把 refresh token 落盘到原生层。
+- 401 处理：access token 刷新一次后重放；下载票据则重新申请票据。不要循环重试。
 
 ## 3. 标准流程
 
 ```
-1. GET  /books/{id}                      → 书名、总时长（用于展示与容量估算）
-2. GET  /books/{id}/chapters?page_size=500&page=N
-                                          → 章节列表，拿 idx / title / start_sec / track_id
-3. GET  /books/{id}/chapters/cache        → 服务端已有的集（可选，用于跳过重复切片）
-4. 对每一集（串行）：
-   a. POST /books/{id}/chapters/{idx}/cache      ← 可选，预生成，提前暴露切片失败
-   b. GET  /books/{id}/chapters/{idx}/audio?download=1
-      - 首次：直接 200/206，边收边写本地文件
+1. GET  /books/{id}/download-manifest
+   → 书名、总时长、全部章节、服务端已缓存章节
+2. POST /books/{id}/download-ticket
+   → 单本书 12 小时下载票据
+   客户端可以先让用户从 manifest.chapters 里选择要下载的章节；
+   未选择的章节不写入本地下载索引。
+3. 对每一集（串行，最多 1–2 并发）：
+   a. GET /books/{id}/chapters/{idx}/audio?download=1
+      Header: X-Download-Token: <ticket>
+      - 首次：200/206，边收边写本地 .part
       - 续传：Range: bytes=<已下载字节>-
-   c. 校验本地文件大小 == Content-Range 总长（没有 Content-Range 时取 Content-Length）
-   d. 写入本地索引（见第 7 节）
-5. PUT /progress/{id}                    ← 播放时按第 8 节换算
+   b. 校验本地文件大小 == Content-Range 总长
+   c. 原子 rename 为正式文件，写入本地索引
+4. PUT /progress/{id}                    ← 播放时按第 8 节换算
 ```
 
 伪代码：
 
 ```text
-for chapter in chapters:
+manifest = GET /books/{id}/download-manifest
+ticket = POST /books/{id}/download-ticket
+for chapter in manifest.chapters:
     local = store.find(book_id, chapter.idx)
-    if local and local.cache_key == server_key(chapter):   # 用 /cache 的 cache_key 比对
+    if local and local.cache_key == server_key(chapter):
         continue
-    if not poster(cache_chapter): skip
-    offset = local?.bytes or 0
-    resp = GET audio with Range(offset) and Bearer(token)
-    append_stream_to_file(resp.body, local.path)
+    offset = local?.downloaded_bytes or 0
+    resp = GET audio with Range(offset) and X-Download-Token(ticket)
+    append_stream_to_file(resp.body, local.part)
     assert file_size == total_from(resp)
+    rename(local.part, local.final)
 ```
 
 ## 4. 下载响应与续传细节
@@ -191,10 +197,10 @@ PUT /api/v1/progress/{book_id}
 | 限制 | 现状 | 后续 |
 |---|---|---|
 | 无批量打包 | 一集一个请求 | 可加 `GET /books/{id}/bundle` 打包 zip（未排期） |
-| 无清单接口 | 需先拉章节目录再逐集判断 | 可加 `GET /books/{id}/download-manifest` |
 | 无校验和 | 只比对字节数 | 可加 `X-Chapter-Checksum`（sha256） |
 | 同步切片 | 首字节延迟 0.2–0.4s | 可改成后台预生成任务 |
 | 单集粒度 | 章节即集 | 长章节可支持按秒切段 |
-| 令牌 | 仅 Bearer | 可选加短时下载令牌（类似 `play-token`） |
+| 离线 UI | 已内置 `web/dist`，断网时启动 127.0.0.1 本机 API；书库、详情、搜索、设置、播放页复用在线版式，进度/书签保存在本机 | 封面、简介和在线书单仍需联网 |
+| 部分下载 | 下载至少一章即可在离线书架显示；未下载章节灰色不可播放 | 需要客户端保存完整章节目录（Android 已保存） |
 
 客户端接入前建议先请求 `GET /api/v1/health` 读 `version`，低于 `0.1.0` 的实例没有本章节接口。

@@ -166,6 +166,7 @@ public class NativePlayer {
                 JSONObject item = array.getJSONObject(i);
                 TrackInfo info = new TrackInfo();
                 info.id = item.getInt("id");
+                info.progressTrackId = item.optInt("progressTrackId", info.id);
                 info.offsetSec = item.optDouble("offsetSec", 0);
                 info.clipStartSec = item.optDouble("clipStartSec", 0);
                 info.durationSec = item.optDouble("durationSec", 0);
@@ -189,7 +190,7 @@ public class NativePlayer {
                     metadata.setArtworkUri(artwork);
                 }
                 Bundle trackExtras = new Bundle();
-                trackExtras.putInt("trackId", info.id);
+                trackExtras.putInt("trackId", info.progressTrackId);
                 trackExtras.putDouble("offsetSec", info.offsetSec);
                 trackExtras.putDouble("clipStartSec", info.clipStartSec);
                 trackExtras.putDouble("clipEndSec", item.optDouble("clipEndSec", 0));
@@ -480,6 +481,7 @@ public class NativePlayer {
 
     private static class TrackInfo {
         int id;
+        int progressTrackId;
         double offsetSec;
         double clipStartSec;
         double durationSec;

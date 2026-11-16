@@ -6,17 +6,20 @@ import { ApiError } from "../api/client";
 import { api } from "../api/endpoints";
 import type { BookDetail as BookDetailType, Chapter } from "../api/types";
 import MetadataEditor from "../components/book/MetadataEditor";
+import OfflineDownload from "../components/book/OfflineDownload";
 import CollectionPicker from "../components/collections/CollectionPicker";
 import Cover from "../components/ui/Cover";
 import { Icon } from "../components/ui/Icon";
 import { formatClock, formatCount, formatDuration } from "../lib/format";
 import { invalidateCover } from "../lib/cover";
+import { isOfflineMode } from "../lib/download";
 import { useAuth } from "../store/auth";
 import { usePlayer } from "../store/player";
 
 export default function BookDetail() {
   const { bookId } = useParams();
   const id = Number(bookId);
+  const offline = isOfflineMode();
   const queryClient = useQueryClient();
   const user = useAuth((state) => state.user);
   // 管理员与上传者可以改资料、换封面；听众只读
@@ -121,7 +124,9 @@ export default function BookDetail() {
 
           {book.cover_url === null && (
             <p className="text-[11px] leading-4 text-zinc-500">
-              没有找到封面，暂用书名渐变代替。
+              {offline
+                ? "离线模式暂未缓存封面，用书名渐变代替。"
+                : "没有找到封面，暂用书名渐变代替。"}
             </p>
           )}
 
@@ -147,9 +152,15 @@ export default function BookDetail() {
               <p className="mt-1 text-sm text-zinc-500">{book.subtitle}</p>
             )}
             <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
-              {book.author ?? "未知作者"}
+              {book.author ?? (offline ? "本地离线书籍" : "未知作者")}
               {book.narrator ? ` · 演播 ${book.narrator}` : ""}
             </p>
+            {offline && (
+              <p className="mt-2 inline-flex items-center gap-1.5 rounded-lg bg-amber-500/10 px-2.5 py-1 text-[11px] text-amber-600 dark:text-amber-400">
+                <Icon name="download" className="size-3.5" />
+                离线书籍：只有已下载章节可以播放
+              </p>
+            )}
             {book.hidden && (
               <p className="mt-2 inline-flex items-center gap-1.5 rounded-lg bg-zinc-500/10 px-2.5 py-1 text-[11px] text-zinc-600 dark:text-zinc-300">
                 <Icon name="eyeOff" className="size-3.5" />
@@ -208,7 +219,10 @@ export default function BookDetail() {
 
           <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             <Stat label="总时长" value={formatDuration(book.total_duration_sec)} />
-            <Stat label="音轨" value={`${book.track_count} 轨`} />
+            <Stat
+              label={offline ? "章节" : "音轨"}
+              value={offline ? `${book.track_count} 章` : `${book.track_count} 轨`}
+            />
             <Stat label="章节" value={chapters.length > 0 ? `${chapters.length} 章` : "—"} />
             <Stat
               label="大小"
@@ -231,15 +245,28 @@ export default function BookDetail() {
                 ? `继续收听 · ${formatClock(progress.position_sec)}`
                 : "开始播放"}
             </button>
+            {!book.is_missing &&
+              (offline ? (
+                <span
+                  title="离线模式暂不支持在线书单"
+                  aria-disabled="true"
+                  className="inline-flex cursor-not-allowed items-center gap-1.5 rounded-full border border-zinc-300 px-4 py-2.5 text-sm text-zinc-400 opacity-45 dark:border-white/10 dark:text-zinc-600"
+                >
+                  <Icon name="booklist" className="size-4" />
+                  加入书单
+                </span>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setPickerOpen(true)}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-zinc-300 px-4 py-2.5 text-sm text-zinc-700 transition hover:border-brand-500/40 hover:text-brand-500 dark:border-white/10 dark:text-zinc-300"
+                >
+                  <Icon name="booklist" className="size-4" />
+                  加入书单
+                </button>
+              ))}
             {!book.is_missing && (
-              <button
-                type="button"
-                onClick={() => setPickerOpen(true)}
-                className="inline-flex items-center gap-1.5 rounded-full border border-zinc-300 px-4 py-2.5 text-sm text-zinc-700 transition hover:border-brand-500/40 hover:text-brand-500 dark:border-white/10 dark:text-zinc-300"
-              >
-                <Icon name="booklist" className="size-4" />
-                加入书单
-              </button>
+              <OfflineDownload bookId={book.id} title={book.title} />
             )}
             {percent > 0 && (
               <span className="text-xs text-zinc-500">已听 {percent.toFixed(0)}%</span>
@@ -398,7 +425,9 @@ function ChapterSection({
       <div className="mt-3 grid gap-1 sm:grid-cols-2">
         {visible.map((chapter, index) => {
           const length = (chapter.end_sec ?? chapter.start_sec) - chapter.start_sec;
+          const unavailable = chapter.available === false;
           const active =
+            !unavailable &&
             currentPosition !== undefined &&
             currentPosition >= chapter.start_sec &&
             (chapter.end_sec === null || currentPosition < chapter.end_sec);
@@ -406,18 +435,25 @@ function ChapterSection({
             <button
               key={chapter.id}
               type="button"
+              disabled={unavailable}
+              title={unavailable ? "这一章尚未下载" : undefined}
               onClick={() => onPick(chapter)}
               className={[
                 "flex items-center gap-3 rounded-lg px-2.5 py-2 text-left transition",
-                active
-                  ? "bg-brand-500/10 text-brand-500"
-                  : "hover:bg-zinc-100 dark:hover:bg-white/5",
+                unavailable
+                  ? "cursor-not-allowed opacity-40"
+                  : active
+                    ? "bg-brand-500/10 text-brand-500"
+                    : "hover:bg-zinc-100 dark:hover:bg-white/5",
               ].join(" ")}
             >
               <span className="w-6 shrink-0 text-[11px] tabular-nums text-zinc-400">
                 {String(index + 1).padStart(2, "0")}
               </span>
               <span className="min-w-0 flex-1 truncate text-xs">{chapter.title}</span>
+              {unavailable && (
+                <span className="shrink-0 text-[10px] text-zinc-400">未下载</span>
+              )}
               <span className="shrink-0 text-[11px] tabular-nums text-zinc-500">
                 {length > 0 ? formatClock(length) : formatClock(chapter.start_sec)}
               </span>

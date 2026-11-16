@@ -8,6 +8,7 @@ import { create } from "zustand";
 import { getAccessToken } from "../api/client";
 import { api, deviceId } from "../api/endpoints";
 import type { BookDetail, Chapter, Track } from "../api/types";
+import { hasNativeDownload, readDownloadSnapshot } from "../lib/download";
 import {
   getNativePlayer,
   type NativePlayPayload,
@@ -82,6 +83,10 @@ const BROWSER_PLAYABLE = new Set([
 ]);
 
 function urlFor(track: Track, token: string | null): string {
+  if (track.localPath) {
+    // Android Media3 直接播放 app 私有目录里的下载文件。
+    return encodeURI(`file://${track.localPath}`);
+  }
   const params = new URLSearchParams();
   if (token) params.set("token", token);
 
@@ -496,11 +501,6 @@ export const usePlayer = create<PlayerState>((set, get) => {
           // 详情可能来自 React Query 缓存；恢复播放前直接读一次当前账号的权威进度。
           wantsRestore ? api.progress(bookId).catch(() => null) : Promise.resolve(null),
         ]);
-        const tracks = withOffsets(detail.tracks);
-        if (tracks.length === 0) {
-          throw new Error("这本书没有可播放的音轨");
-        }
-
         // 章节超过 500 条时详情会省略，兜底再拉一次
         let chapters = detail.chapters;
         if (chapters === null) {
@@ -508,6 +508,53 @@ export const usePlayer = create<PlayerState>((set, get) => {
             .chapters(bookId, 1, 500)
             .then((list) => list.items)
             .catch(() => []);
+        }
+
+        // 整本书都已下载时，用本地章节文件组成离线播放列表；
+        // 播放列表的 id 用负数避免和真实 track_id 冲突，进度仍上报真实 track_id。
+        const offline = hasNativeDownload()
+          ? readDownloadSnapshot()[String(bookId)]
+          : null;
+        const offlineFiles = new Map(
+          (offline?.chapters ?? [])
+            .filter((item) => item.status === "done" && item.filePath)
+            .map((item) => [item.idx, item.filePath] as const),
+        );
+        // 离线本地库的 chapters 包含未下载章节（available=false）；
+        // 播放队列只使用已下载章节，详情/播放面板仍能展示灰色章节。
+        const playableChapters = chapters.filter(
+          (chapter) => chapter.available !== false,
+        );
+        const canPlayOffline =
+          Boolean(nativePlayer) &&
+          offline?.status === "done" &&
+          playableChapters.length > 0 &&
+          playableChapters.every((chapter) => offlineFiles.has(chapter.idx));
+
+        let tracks: TrackWithOffset[];
+        if (canPlayOffline) {
+          tracks = playableChapters.map((chapter, index) => {
+            const end = chapter.end_sec ?? detail.total_duration_sec;
+            const duration = Math.max(0, end - chapter.start_sec);
+            return {
+              id: -(index + 1),
+              track_no: index + 1,
+              disc_no: 1,
+              title: chapter.title,
+              duration_sec: duration,
+              format: "m4a",
+              bitrate: null,
+              stream_url: "",
+              localPath: offlineFiles.get(chapter.idx),
+              progressTrackId: chapter.track_id,
+              offsetSec: chapter.start_sec,
+            };
+          });
+        } else {
+          tracks = withOffsets(detail.tracks);
+        }
+        if (tracks.length === 0) {
+          throw new Error("这本书没有可播放的音轨");
         }
         const percent =
           freshProgress && detail.total_duration_sec > 0
@@ -586,6 +633,7 @@ export const usePlayer = create<PlayerState>((set, get) => {
               offsetSec: track.offsetSec,
               clipStartSec,
               clipEndSec,
+              progressTrackId: track.progressTrackId ?? track.id,
             };
           });
           const coverUrl = detail.cover_url
@@ -609,12 +657,12 @@ export const usePlayer = create<PlayerState>((set, get) => {
               window.clearTimeout(coverTimer);
             }
           }
-          const chapterStartsSec = bookDetail.chapters.flatMap((chapter) =>
+          const chapterStartsSec = playableChapters.flatMap((chapter) =>
             Number.isFinite(chapter.start_sec) && chapter.start_sec >= 0
               ? [chapter.start_sec]
               : [],
           );
-          const chapterEndsSec = bookDetail.chapters.flatMap((chapter) =>
+          const chapterEndsSec = playableChapters.flatMap((chapter) =>
             typeof chapter.end_sec === "number" &&
             Number.isFinite(chapter.end_sec) &&
             chapter.end_sec > 0
@@ -1088,8 +1136,9 @@ export const usePlayer = create<PlayerState>((set, get) => {
       // 网页平时每 15 秒会调到这里，顺手把刷新后的 token 推给原生服务。
       if (nativePlayer && token) nativePlayer.setAuth?.(token);
 
+      const currentTrack = findTrackById(state.tracks, state.trackId);
       const payload = {
-        track_id: state.trackId,
+        track_id: currentTrack?.progressTrackId ?? state.trackId,
         position_sec: Number(state.positionSec.toFixed(3)),
         playback_rate: state.rate,
         device_id: deviceId(),

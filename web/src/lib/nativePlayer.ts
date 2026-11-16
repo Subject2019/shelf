@@ -13,6 +13,8 @@ export interface NativeTrackPayload {
   offsetSec: number;
   clipStartSec: number;
   clipEndSec: number;
+  /** 离线合成音轨时向服务端上报的真实音轨 id。 */
+  progressTrackId?: number;
 }
 
 export interface NativePlayPayload {

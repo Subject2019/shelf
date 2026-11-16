@@ -2,6 +2,7 @@ import { Route, Routes } from "react-router-dom";
 
 import RequireAuth from "./components/auth/RequireAuth";
 import AppShell from "./components/layout/AppShell";
+import { isOfflineMode } from "./lib/download";
 import BookDetail from "./pages/BookDetail";
 import Home from "./pages/Home";
 import Authors from "./pages/Authors";
@@ -15,9 +16,11 @@ import Search from "./pages/Search";
 import Settings from "./pages/Settings";
 
 export default function App() {
+  // Android 断网时，本机 127.0.0.1 服务同时提供静态 WebUI 和离线 /api/v1；
+  // 因此这里仍走和在线完全相同的路由，只把无法离线支持的功能置灰。
   return (
     <Routes>
-      <Route element={<AppShell />}>
+      <Route element={<AppShell offline={isOfflineMode()} />}>
         <Route index element={<Home />} />
         <Route path="login" element={<Login />} />
 

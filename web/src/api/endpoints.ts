@@ -17,6 +17,8 @@ import type {
   PasswordlessListenerList,
   Device,
   DeviceList,
+  DownloadManifest,
+  DownloadTicket,
   Health,
   Library,
   LibraryList,
@@ -159,6 +161,16 @@ export const api = {
   /** <audio> 无法自定义请求头，用它换一个绑定本书的短时流令牌。 */
   playToken: (bookId: number) =>
     request<PlayToken>(`/books/${bookId}/play-token`, { method: "POST" }),
+
+  /** 离线下载清单：章节列表和已切好的缓存信息。 */
+  downloadManifest: (bookId: number) =>
+    request<DownloadManifest>(`/books/${bookId}/download-manifest`),
+
+  /** 单本书短时下载票据，供 Android 原生下载器后台使用。 */
+  downloadTicket: (bookId: number) =>
+    request<DownloadTicket>(`/books/${bookId}/download-ticket`, {
+      method: "POST",
+    }),
 
   /** 直接读取该账号在这本书上的最新进度，恢复播放前强制对齐。 */
   progress: (bookId: number) =>

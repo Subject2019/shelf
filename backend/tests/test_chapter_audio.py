@@ -210,6 +210,42 @@ def test_slice_creates_file_then_hits_cache(client, chapter_env):
     assert second.json()["created"] is False
 
 
+def test_download_manifest_and_ticket(client, chapter_env):
+    headers = _login(client)
+    book_id = chapter_env["book_id"]
+
+    manifest = client.get(
+        f"/api/v1/books/{book_id}/download-manifest", headers=headers
+    )
+    assert manifest.status_code == 200, manifest.text
+    payload = manifest.json()
+    assert payload["book_id"] == book_id
+    assert [item["idx"] for item in payload["chapters"]] == [0, 1]
+    assert payload["cached"] == []
+    assert payload["total_cached_bytes"] == 0
+
+    ticket = client.post(
+        f"/api/v1/books/{book_id}/download-ticket", headers=headers
+    )
+    assert ticket.status_code == 200, ticket.text
+    token = ticket.json()["token"]
+    assert ticket.json()["expires_in"] > 0
+
+    # 下载票据只用于章节音频，不需要 access token
+    audio = client.get(
+        f"/api/v1/books/{book_id}/chapters/1/audio",
+        headers={"X-Download-Token": token},
+    )
+    assert audio.status_code == 200
+    assert audio.content
+
+    invalid = client.get(
+        f"/api/v1/books/{book_id}/chapters/1/audio",
+        headers={"X-Download-Token": "not-a-ticket"},
+    )
+    assert invalid.status_code == 401
+
+
 def test_audio_range_and_download_headers(client, chapter_env):
     headers = _login(client)
     book_id = chapter_env["book_id"]

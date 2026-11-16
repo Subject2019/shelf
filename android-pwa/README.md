@@ -1,6 +1,6 @@
 # android-pwa — Android WebView 壳
 
-**状态：0.2.12（2026-11-07）**。包名 `com.shelf.pwa`，minSdk 24 / targetSdk 35，AGP 8.5.2 + Gradle 8.7 + Media3 1.3.1 + Java 17。
+**状态：1.0.0（2026-11-17）**。包名 `com.shelf.pwa`，minSdk 24 / targetSdk 35，AGP 8.5.2 + Gradle 8.7 + Media3 1.3.1 + Java 17。
 
 不内置 WebUI：启动后加载服务器上的 shelf 网页，界面、登录、书库全部复用 WebUI。音频播放由原生 Media3 前台服务接管，因此支持后台播放、状态栏/锁屏媒体控制和息屏续播。
 
@@ -90,9 +90,31 @@ cd android-pwa
 
 原生 → 网页：`window.__shelfPlayer.onState(json)`，每 500ms 回传 `playing / buffering / trackIndex / positionSec / rate / volume / error`。
 
+## 离线 WebUI
+
+1.0.0 起 `web/dist` 会通过 Gradle `sourceSets` 打进 APK 的 `assets/`。断网或服务器不可达时，App 启动 `LocalApiServer`，只绑定本机回环地址：
+
+```text
+http://127.0.0.1:<随机端口>/index.html
+```
+
+这个服务同时提供：
+
+- APK 内置的 `web/dist` 静态资源；
+- 基于 `DownloadStore` 的离线 `/api/v1`：健康检查、书库、书籍详情、章节、进度、书签等。
+
+WebUI 仍走在线相同的 `AppShell`、书库卡片、详情页和播放页。离线时建立本地用户，不经过远程登录；书库、详情、搜索、设置、播放页的章节/书签/进度都可以使用，只有书单和需要远程元数据的功能置灰。
+
+构建 APK 前先构建前端：
+
+```bash
+cd web && npm run build
+cd ../android-pwa && ./gradlew assembleRelease
+```
+
 ## 排查
 
-- **没有媒体卡片/封面**：检查通知权限；确认 App 版本 0.2.12；确认前端包含 `ShelfPlayer` 适配层和进度上下文（开发 5173 或重建后的生产镜像）。
+- **没有媒体卡片/封面**：检查通知权限；确认 App 版本 1.0.0；确认前端包含 `ShelfPlayer` 适配层和进度上下文（开发 5173 或重建后的生产镜像）。
 - **状态栏有播放但按钮少**：Android 通知栏收起时最多显示 3 个动作，展开后才是完整 5 个；锁屏卡片由系统渲染，部分 ROM 会重排。
 - **图标被裁切**：自适应图标前景已限制在安全区；卸载重装或重启启动器/清除启动器缓存。
 - **播放失败**：看 logcat 标签 `ShelfNativePlayer`；确认 `stream_url` 可访问、token 未过期。
@@ -105,4 +127,6 @@ cd android-pwa
 - 流令牌有效期 6 小时；超长单集跨令牌过期需要重新打开/刷新。
 - 系统媒体卡片的布局、进度条样式、按钮分组由 ROM 决定；App 已暴露当前音轨时长和 seek 命令，但部分 ROM 仍可能不渲染进度条。
 - access token 有效期为 30 分钟。若 WebView 已被销毁、token 又已过期，原生服务无法自行续期；此时进度会先保存在本地，等重新打开 App 注入新 token 后补传。跨设备立即看到最后一段进度仍受这个限制。
-- 未内置离线下载；未打包 WebUI。
+- 下载支持整本或按章节选择；只要下载了至少一章，这本书就会出现在离线书架。
+- 部分下载的书籍会保留完整章节目录：已下载章节可播放，未下载章节在详情页和播放页显示为灰色且不可点击。
+- 下载队列一次只串行执行一个章节；选择章节后如果继续补选，已下载章节不会重复下载。

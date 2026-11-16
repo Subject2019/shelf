@@ -8,11 +8,13 @@ import LibrarySection from "../components/settings/LibrarySection";
 import PlaybackSection from "../components/settings/PlaybackSection";
 import UserSection from "../components/settings/UserSection";
 import { formatCount } from "../lib/format";
+import { isOfflineMode } from "../lib/download";
 import { ACCENTS } from "../styles/accent";
 import { useAuth } from "../store/auth";
 import { useUi } from "../store/ui";
 
 export default function Settings() {
+  const offline = isOfflineMode();
   const theme = useUi((state) => state.theme);
   const setTheme = useUi((state) => state.setTheme);
   const accent = useUi((state) => state.accent);
@@ -36,8 +38,16 @@ export default function Settings() {
       <header>
         <h1 className="text-2xl font-semibold tracking-tight">设置</h1>
         <p className="mt-1 text-sm text-zinc-500">
-          外观与播放偏好保存在这台设备的浏览器里，不影响其他设备。
+          {offline
+            ? "当前是离线模式：外观、播放偏好、进度和书签都只保存在这台设备。"
+            : "外观与播放偏好保存在这台设备的浏览器里，不影响其他设备。"}
         </p>
+        {offline && (
+          <div className="mt-3 inline-flex items-center gap-2 rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-[11px] font-medium text-amber-600 dark:text-amber-400">
+            <span className="size-1.5 rounded-full bg-amber-400" />
+            本地单用户模式，未连接远程服务器
+          </div>
+        )}
       </header>
 
       <section className="glass rounded-2xl p-5 shadow-lift sm:p-6">
@@ -135,8 +145,8 @@ export default function Settings() {
 
       <section className="glass rounded-2xl p-5 shadow-lift sm:p-6">
         <div className="flex items-center justify-between">
-          <h2 className="text-sm font-semibold">账号</h2>
-          {user && (
+          <h2 className="text-sm font-semibold">{offline ? "本地用户" : "账号"}</h2>
+          {!offline && user && (
             <button
               type="button"
               onClick={() => void logout()}
@@ -160,11 +170,13 @@ export default function Settings() {
             <div>
               <dt className="text-xs text-zinc-500">角色</dt>
               <dd className="mt-0.5">
-                {user.role === "admin"
-                  ? "管理员"
-                  : user.role === "editor"
-                    ? "上传者"
-                    : "听众"}
+                {offline
+                  ? "离线听众"
+                  : user.role === "admin"
+                    ? "管理员"
+                    : user.role === "editor"
+                      ? "上传者"
+                      : "听众"}
               </dd>
             </div>
             <div>
@@ -188,25 +200,29 @@ export default function Settings() {
         )}
       </section>
 
-      {user && <AccountSection />}
+      {!offline && user && <AccountSection />}
 
       <section className="glass rounded-2xl p-5 shadow-lift sm:p-6">
-        <h2 className="text-sm font-semibold">服务</h2>
+        <h2 className="text-sm font-semibold">{offline ? "本地服务" : "服务"}</h2>
         <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
+          <div>
+            <dt className="text-xs text-zinc-500">运行模式</dt>
+            <dd className="mt-0.5">{offline ? "离线模式" : "远程服务"}</dd>
+          </div>
           <div>
             <dt className="text-xs text-zinc-500">版本</dt>
             <dd className="mt-0.5">{health.data?.version ?? "—"}</dd>
           </div>
           <div>
-            <dt className="text-xs text-zinc-500">数据库</dt>
+            <dt className="text-xs text-zinc-500">{offline ? "本地数据" : "数据库"}</dt>
             <dd className="mt-0.5">{health.data?.db === "ok" ? "正常" : "—"}</dd>
           </div>
           <div>
-            <dt className="text-xs text-zinc-500">音频引擎</dt>
+            <dt className="text-xs text-zinc-500">{offline ? "本地播放" : "音频引擎"}</dt>
             <dd className="mt-0.5">{health.data?.ffmpeg ? "可用" : "缺失"}</dd>
           </div>
           <div>
-            <dt className="text-xs text-zinc-500">书籍数量</dt>
+            <dt className="text-xs text-zinc-500">{offline ? "离线书籍" : "书籍数量"}</dt>
             <dd className="mt-0.5">
               {health.data ? `${formatCount(health.data.books)} 本` : "—"}
             </dd>
@@ -221,7 +237,7 @@ export default function Settings() {
         </p>
       </section>
 
-      {user && <DeviceSection />}
+      {!offline && user && <DeviceSection />}
 
       {user?.role === "admin" && <UserSection />}
 

@@ -158,6 +158,25 @@ class ChapterCacheList(BaseModel):
     total_bytes: int
 
 
+class DownloadManifestOut(BaseModel):
+    """一本书的离线下载清单；cached 只包含服务端已切好的章节。"""
+
+    book_id: int
+    title: str
+    total_duration_sec: float
+    chapters: list[ChapterOut]
+    cached: list[ChapterAudioOut]
+    total_cached_bytes: int
+
+
+class DownloadTicketOut(BaseModel):
+    """短期下载票据，只允许访问单本书的章节音频。"""
+
+    token: str
+    expires_in: int
+    expires_at: int
+
+
 class BookUpdate(BaseModel):
     """PATCH 语义：只改传了的字段；空字符串会被当作「清空」。"""
 

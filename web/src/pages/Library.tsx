@@ -23,6 +23,7 @@ import {
 import SkeletonCard from "../components/shelf/SkeletonCard";
 import { Icon } from "../components/ui/Icon";
 import { formatCount } from "../lib/format";
+import { isOfflineMode } from "../lib/download";
 import { useDebouncedValue } from "../lib/useDebouncedValue";
 import { useAuth } from "../store/auth";
 
@@ -41,6 +42,7 @@ const VIEWS = [
 ] as const;
 
 export default function Library() {
+  const offline = isOfflineMode();
   const [libraryId, setLibraryId] = useState<number | undefined>(undefined);
   const [keyword, setKeyword] = useState("");
   const [filter, setFilter] = useState<BookFilter>("all");
@@ -263,22 +265,28 @@ export default function Library() {
     <div className="space-y-5">
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">书库</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">
+            {offline ? "离线书库" : "书库"}
+          </h1>
           <p className="mt-1 text-sm text-zinc-500">
             {booksQuery.isLoading
               ? "正在读取书籍…"
-              : `共 ${formatCount(total)} 本${hasFilter ? "（已筛选）" : ""}`}
+              : offline
+                ? `本机已下载 ${formatCount(total)} 本${hasFilter ? "（已筛选）" : ""}`
+                : `共 ${formatCount(total)} 本${hasFilter ? "（已筛选）" : ""}`}
           </p>
         </div>
 
         <div className="flex items-center gap-2">
-          <Link
-            to="/authors"
-            className="flex items-center gap-1.5 rounded-full border border-zinc-200 px-3 py-1.5 text-xs text-zinc-600 transition hover:border-brand-400/50 hover:text-brand-500 dark:border-white/10 dark:text-zinc-300"
-          >
-            <Icon name="user" className="size-3.5" />
-            作者
-          </Link>
+          {!offline && (
+            <Link
+              to="/authors"
+              className="flex items-center gap-1.5 rounded-full border border-zinc-200 px-3 py-1.5 text-xs text-zinc-600 transition hover:border-brand-400/50 hover:text-brand-500 dark:border-white/10 dark:text-zinc-300"
+            >
+              <Icon name="user" className="size-3.5" />
+              作者
+            </Link>
+          )}
           <div className="flex items-center gap-1 rounded-full border border-zinc-200 p-1 dark:border-white/10">
             {VIEWS.map((item) => (
             <button
@@ -370,10 +378,18 @@ export default function Library() {
       ) : books.length === 0 ? (
         <div className="rounded-card border border-dashed border-zinc-300 px-6 py-14 text-center dark:border-white/10">
           <p className="text-sm text-zinc-500">
-            {hasFilter ? "没有符合条件的书" : "书架还是空的"}
+            {hasFilter
+              ? "没有符合条件的书"
+              : offline
+                ? "还没有下载任何书籍"
+                : "书架还是空的"}
           </p>
           <p className="mt-1 text-xs text-zinc-500">
-            {hasFilter ? "换个关键词或清除筛选试试" : "先在书库里登记目录并触发扫描"}
+            {hasFilter
+              ? "换个关键词或清除筛选试试"
+              : offline
+                ? "联网时在书籍详情选择整本或章节下载"
+                : "先在书库里登记目录并触发扫描"}
           </p>
           {hasFilter && (
             <button
