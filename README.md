@@ -11,7 +11,7 @@
 <p align="center">
   <a href="https://github.com/Subject2019/shelf/releases/latest"><img alt="release" src="https://img.shields.io/github/v/release/Subject2019/shelf?style=flat-square&label=release&cacheSeconds=300" /></a>
   <a href="https://github.com/users/Subject2019/packages/container/shelf"><img alt="docker" src="https://img.shields.io/badge/GHCR-ghcr.io%2Fsubject2019%2Fshelf-2496ED?style=flat-square&logo=docker&logoColor=white" /></a>
-  <img alt="android" src="https://img.shields.io/badge/Android-1.0.0-3DDC84?style=flat-square&logo=android&logoColor=white" />
+  <img alt="android" src="https://img.shields.io/badge/Android-1.0.1-3DDC84?style=flat-square&logo=android&logoColor=white" />
   <img alt="fnos" src="https://img.shields.io/badge/fnOS-1.0.0--1-1F7A5A?style=flat-square" />
   <a href="https://github.com/Subject2019/shelf/stargazers"><img alt="stars" src="https://img.shields.io/github/stars/Subject2019/shelf?style=flat-square" /></a>
   <a href="./LICENSE"><img alt="license" src="https://img.shields.io/badge/license-MIT-2ea44f?style=flat-square" /></a>
@@ -137,7 +137,7 @@ shelf 是一个面向 NAS 的自托管有声书服务器。把有声书目录挂
 ### 客户端
 
 - WebUI 响应式布局，浏览器直接使用（未内置 service worker，暂不等同完整 PWA）
-- Android 壳（`android-pwa/`，包名 `com.shelf.pwa`，当前 1.0.0）：WebView 复用 WebUI，原生 Media3 负责后台播放；状态栏/锁屏提供上一集、播放/暂停、下一集、封面和当前单集进度条；进度由原生服务每 15 秒直报，划掉后台也会继续同步
+- Android 壳（`android-pwa/`，包名 `com.shelf.pwa`，当前 1.0.1）：WebView 复用 WebUI，原生 Media3 负责后台播放；状态栏/锁屏提供上一集、播放/暂停、下一集、封面和当前单集进度条；进度由原生服务每 15 秒直报，划掉后台也会继续同步
 - 离线模式：APK 内置 WebUI 和本机 API，支持整本/按章节下载；断网后仍可浏览离线书架、搜索、设置、章节、进度和书签，未下载章节灰色不可播
 - 原生播放依赖服务端 WebUI 中的 `ShelfPlayer` 适配层；升级 APK 或前端后请保持两端一致，否则会回退到 WebView `<audio>`，状态栏不显示媒体卡片
 - 原生 Compose 版（`android/`）为早期实验，已搁置；其 Media3 播放服务已被 WebView 壳复用
@@ -166,7 +166,7 @@ shelf 是一个面向 NAS 的自托管有声书服务器。把有声书目录挂
 
 | 安装包 | 适用场景 | 获取方式 |
 |---|---|---|
-| **Android APK** | 手机上听书，连接已有 shelf 服务端 | [下载 `shelf-1.0.0.apk`](https://github.com/Subject2019/shelf/releases/download/v1.0.0/shelf-1.0.0.apk) |
+| **Android APK** | 手机上听书，连接已有 shelf 服务端 | [下载 `shelf-1.0.1.apk`](https://github.com/Subject2019/shelf/releases/download/v1.0.1/shelf-1.0.1.apk) |
 | **飞牛 fnOS fpk（原生 x86_64）** | x86_64 飞牛，不使用 Docker | [下载 `shelf-native-1.0.0-1-fnos.fpk`](https://github.com/Subject2019/shelf/releases/download/v1.0.0/shelf-native-1.0.0-1-fnos.fpk) |
 | **飞牛 fnOS fpk（原生 ARM64）** | ARM64 飞牛，不使用 Docker | [下载 `shelf-native-1.0.0-1-arm-fnos.fpk`](https://github.com/Subject2019/shelf/releases/download/v1.0.0/shelf-native-1.0.0-1-arm-fnos.fpk) |
 | **Docker 镜像** | 群晖 / 威联通 / Unraid / Linux 等 | `ghcr.io/subject2019/shelf:1.0.0`，见下方 Docker 章节 |
@@ -256,7 +256,7 @@ docker build -f deploy/docker/Dockerfile -t shelf:latest .
 ### Android 客户端（android-pwa）
 
 <p>
-  <a href="https://github.com/Subject2019/shelf/releases/download/v1.0.0/shelf-1.0.0.apk"><img alt="下载 Android APK" src="https://img.shields.io/badge/下载-Android%201.0.0-3DDC84?style=for-the-badge&logo=android&logoColor=white" /></a>
+  <a href="https://github.com/Subject2019/shelf/releases/download/v1.0.1/shelf-1.0.1.apk"><img alt="下载 Android APK" src="https://img.shields.io/badge/下载-Android%201.0.1-3DDC84?style=for-the-badge&logo=android&logoColor=white" /></a>
 </p>
 
 WebView 壳内置 WebUI 和本机离线 API：联网时从服务器加载页面；断网时自动切到 `127.0.0.1` 本机书库，音频播放由原生 Media3 前台服务接管。完整说明见 [`android-pwa/README.md`](./android-pwa/README.md)。

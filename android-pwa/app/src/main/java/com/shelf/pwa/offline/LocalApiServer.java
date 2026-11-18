@@ -154,7 +154,7 @@ public final class LocalApiServer {
             if (api.equals("/health")) {
                 writeJson(out, 200, new JSONObject()
                         .put("status", "ok")
-                        .put("version", "1.0.0")
+                        .put("version", "1.0.1")
                         .put("db", "ok")
                         .put("ffmpeg", true)
                         .put("libraries", books.length() > 0 ? 1 : 0)

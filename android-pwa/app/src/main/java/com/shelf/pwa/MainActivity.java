@@ -7,8 +7,12 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
+import android.net.ConnectivityManager;
+import android.net.Network;
+import android.net.NetworkCapabilities;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.SystemClock;
 import android.util.Log;
 import android.view.View;
 import android.view.WindowInsets;
@@ -57,6 +61,8 @@ public class MainActivity extends Activity {
     private boolean splashFinished = false;
     /** 当前是否加载 127.0.0.1 的内置 WebUI；用于避免资源缺失时递归重载。 */
     private boolean localWebMode = false;
+    private boolean startupChecked = false;
+    private long pausedAt = 0L;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -64,10 +70,7 @@ public class MainActivity extends Activity {
         SharedPreferences sp = getSharedPreferences(PREFS, MODE_PRIVATE);
         String url = getIntent().getStringExtra("url");
         if (url == null) url = sp.getString(KEY_URL, null);
-        if (url == null) {
-            startSetup();
-            return;
-        }
+        // 没有服务器地址也先把 WebView 初始化好：离线启动需要本机 WebUI。
         serverUrl = url;
 
         // 透明状态栏 + 导航栏，内容顶到屏幕边缘
@@ -139,10 +142,16 @@ public class MainActivity extends Activity {
 
             @Override
             public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
-                // 仅主框架失败才进入离线流程；有下载时加载本地 WebUI，否则显示错误页。
-                if (request.isForMainFrame()) {
-                    showOfflineOrError();
+                if (!request.isForMainFrame()) return;
+                String failedUrl = request.getUrl() == null
+                        ? ""
+                        : request.getUrl().toString();
+                // 已经切到本机 WebUI 时，旧远程请求的失败回调要忽略，避免把本地页面顶掉。
+                if (localWebMode) {
+                    if (failedUrl.startsWith("http://127.0.0.1")) showErrorPage();
+                    return;
                 }
+                showOfflineWeb();
             }
         });
 
@@ -160,21 +169,83 @@ public class MainActivity extends Activity {
         setContentView(webView);
         requestNotificationPermission();
         loadInitialPage();
+        startupChecked = true;
+        pausedAt = SystemClock.elapsedRealtime();
     }
 
     /**
-     * 有已下载书籍时先探测服务器：断网/服务器不可达直接进离线书架，
-     * 避免 WebView 命中缓存后停在登录页，让用户以为只能登录不能离线。
+     * 从后台回来时重新检查一次：网络断开立刻切离线；网络恢复且原服务器可达时
+     * 自动回到远程页面。短时间内的 onResume（权限弹窗等）不重复探测。
      */
-    private void loadInitialPage() {
-        if (!hasDownloads()) {
-            Log.i(TAG, "startup online mode: no downloaded books");
-            webView.loadUrl(serverUrl);
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (!startupChecked || webView == null) return;
+        long idle = SystemClock.elapsedRealtime() - pausedAt;
+        if (idle < 2500) return;
+        boolean network = hasNetwork();
+        if (!localWebMode && !network) {
+            Log.i(TAG, "resume offline: network lost");
+            showOfflineWeb();
             return;
         }
+        if (!network || serverUrl == null) return;
+
         new Thread(() -> {
             boolean online = probeServer();
-            Log.i(TAG, "startup offline gate: downloads=yes online=" + online);
+            runOnUiThread(() -> {
+                if (webView == null) return;
+                if (!online) {
+                    if (!localWebMode) {
+                        Log.i(TAG, "resume offline: server unreachable");
+                        showOfflineWeb();
+                    }
+                } else if (localWebMode) {
+                    Log.i(TAG, "resume online: server reachable");
+                    localWebMode = false;
+                    webView.loadUrl(serverUrl);
+                }
+            });
+        }, "shelf-resume-probe").start();
+    }
+
+    @Override
+    protected void onPause() {
+        pausedAt = SystemClock.elapsedRealtime();
+        super.onPause();
+    }
+
+    /**
+     * 启动门禁：
+     * 1. 没有网络：直接进入本机离线服务；
+     * 2. 没有配置服务器：有网络时进入地址设置，无网络时离线；
+     * 3. 已配置服务器：先探测 /health，不可达时自动进入离线服务。
+     *
+     * 离线模式不要求“已经下载过书籍”：没有下载时也应该能进入本机空书库，
+     * 而不是停在远程登录页或错误页。
+     */
+    private void loadInitialPage() {
+        boolean network = hasNetwork();
+        if (serverUrl == null) {
+            if (!network) {
+                Log.i(TAG, "startup offline: no network and no server url");
+                showOfflineWeb();
+                return;
+            }
+            Log.i(TAG, "startup setup: network available, no server url");
+            startSetup();
+            return;
+        }
+
+        if (!network) {
+            Log.i(TAG, "startup offline: no network");
+            showOfflineWeb();
+            return;
+        }
+
+        new Thread(() -> {
+            boolean online = probeServer();
+            Log.i(TAG, "startup gate: network=yes server_reachable=" + online);
             runOnUiThread(() -> {
                 if (online) {
                     localWebMode = false;
@@ -184,6 +255,23 @@ public class MainActivity extends Activity {
                 }
             });
         }, "shelf-startup-probe").start();
+    }
+
+    /** 当前是否有可用网络；Wi-Fi/移动网络断开时直接走离线，不等待连接超时。 */
+    private boolean hasNetwork() {
+        try {
+            ConnectivityManager manager =
+                    (ConnectivityManager) getSystemService(CONNECTIVITY_SERVICE);
+            if (manager == null) return true;
+            Network network = manager.getActiveNetwork();
+            if (network == null) return false;
+            NetworkCapabilities capabilities = manager.getNetworkCapabilities(network);
+            return capabilities != null
+                    && capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET);
+        } catch (Exception ignored) {
+            // 极端情况下拿不到网络状态时交给后面的服务器探测兜底。
+            return true;
+        }
     }
 
     private boolean hasDownloads() {
@@ -279,22 +367,8 @@ public class MainActivity extends Activity {
         webView.evaluateJavascript(js, null);
     }
 
-    private void showOfflineOrError() {
-        if (localWebMode) {
-            showErrorPage();
-        } else if (hasDownloads()) {
-            showOfflineWeb();
-        } else {
-            showErrorPage();
-        }
-    }
-
     /** 断网时启动本机 API 服务，并加载 APK 内置 WebUI。 */
     private void showOfflineWeb() {
-        if (!hasDownloads()) {
-            showErrorPage();
-            return;
-        }
         try {
             LocalApiServer local = LocalApiServer.ensure(this);
             localWebMode = true;
@@ -353,14 +427,18 @@ public class MainActivity extends Activity {
                 + "})();"
                 + "</script>"
                 + "</body></html>";
-        webView.loadDataWithBaseURL(serverUrl, html, "text/html", "utf-8", null);
+        String baseUrl = serverUrl != null ? serverUrl : "http://127.0.0.1";
+        webView.loadDataWithBaseURL(baseUrl, html, "text/html", "utf-8", null);
     }
 
     private void reload() {
-        localWebMode = false;
-        if (webView != null && serverUrl != null) {
-            webView.loadUrl(serverUrl);
+        if (webView == null) return;
+        if (serverUrl == null) {
+            showOfflineWeb();
+            return;
         }
+        localWebMode = false;
+        webView.loadUrl(serverUrl);
     }
 
     /**

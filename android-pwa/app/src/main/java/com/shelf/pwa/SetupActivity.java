@@ -3,6 +3,9 @@ package com.shelf.pwa;
 import android.app.Activity;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.net.ConnectivityManager;
+import android.net.Network;
+import android.net.NetworkCapabilities;
 import android.net.Uri;
 import android.os.Bundle;
 import android.text.TextUtils;
@@ -40,6 +43,12 @@ public class SetupActivity extends Activity {
         String url = sp.getString(KEY_URL, null);
         if (!TextUtils.isEmpty(url)) {
             startMain(url);
+            return;
+        }
+
+        // 首次启动且没有网络：不进入地址输入页，直接由 MainActivity 启动本机离线服务。
+        if (!hasNetwork()) {
+            startMain(null);
             return;
         }
 
@@ -141,6 +150,9 @@ public class SetupActivity extends Activity {
                     getSharedPreferences(PREFS, MODE_PRIVATE)
                             .edit().putString(KEY_URL, okUrl).apply();
                     startMain(okUrl);
+                } else if (!hasNetwork()) {
+                    // 地址验证过程中网络刚好断开：不把用户卡在地址页，直接进入离线本地服务。
+                    startMain(null);
                 } else {
                     toast("不是有效的 shelf 服务地址（" + err + "），请检查后重试");
                 }
@@ -158,6 +170,21 @@ public class SetupActivity extends Activity {
             }
         }
         return sb.toString();
+    }
+
+    private boolean hasNetwork() {
+        try {
+            ConnectivityManager manager =
+                    (ConnectivityManager) getSystemService(CONNECTIVITY_SERVICE);
+            if (manager == null) return true;
+            Network network = manager.getActiveNetwork();
+            if (network == null) return false;
+            NetworkCapabilities capabilities = manager.getNetworkCapabilities(network);
+            return capabilities != null
+                    && capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET);
+        } catch (Exception ignored) {
+            return true;
+        }
     }
 
     private void toast(String msg) {
